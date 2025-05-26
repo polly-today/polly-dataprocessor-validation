@@ -17,12 +17,13 @@ Each report is written twice on every run:
 
 Both versions include a leading timestamp_of_validation column so you always know when each row was generated.
 
+---
+
 ## Requirements
 
 - Python **3.8+**  
 - A virtual environment (recommended)  
 - Dependencies listed in `requirements.txt`
-
 
 ---
 
