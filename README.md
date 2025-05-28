@@ -99,4 +99,6 @@ docker compose up -d
 
 **TODO: database setup**
 
+port in use 5433 
+
 
