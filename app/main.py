@@ -5,18 +5,22 @@ import base64
 import json
 from io import BytesIO
 from PIL import Image
-
+import asyncio
+from dataprocessor import get_chat_gpt_response
 from utils import get_args, load_prompt, load_csv, load_inputs, get_image_from_base64
 
 labeled_data_path = "../database/labeled_data.csv"
 prompt_path = "../database/prompt.txt"
 schema_path = "../database/product_offers_schema.json"
 
-def main():
+async def main():
     # Fetch inputs to validate
     inputs = load_inputs()
     # Fetch labeled data (FUTURE: direct connection with Google Sheets)
     target_output = load_csv(labeled_data_path)
+    # Load response schema
+    with open(schema_path, 'r') as file:
+        product_offers_schema = json.load(file)
 
     # Get command line arguments and provide inputs to specify the option to choose from
     args = get_args(inputs=inputs)
@@ -62,10 +66,30 @@ def main():
         # elif input_to_validate[input_id]["value_type"] == "xlsx":
         # elif input_to_validate[input_id]["value_type"] == "pdf":
         # else:
+    
+        response = await get_chat_gpt_response(
+            system_prompt=system_prompt,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "product_offers_schema",
+                    "schema": product_offers_schema
+                }
+            },
+            model="gpt-4o",
+            text_to_analize=None,
+            encoded_image=b64_string,
+            encoded_file_type=None,
+            encoded_filename=None,
+            encoded_file=None,
+        )
+
+        # Now print it (or otherwise inspect it):
+        print(json.dumps(response, indent=2))
 
 
 
     return
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

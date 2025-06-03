@@ -31,6 +31,7 @@ def load_inputs():
     # Run the query and load into a DataFrame
     try:
         df = pd.read_sql(query, con=engine)
+        print(df)
         return df
     except Exception as e:
         print("Error executing query:", e)
@@ -76,7 +77,8 @@ def get_args(inputs) -> argparse.Namespace:
     # 1. Prepare the list of valid IDs + metadata for help text
     # ——————————————
     # Sort by 'id' so the help listing appears in ascending order
-    sorted_df = inputs.sort_values("id").reset_index(drop=True)
+    # sorted_df = inputs.sort_values("id").reset_index(drop=True)
+    sorted_df = inputs
     all_ids = sorted_df["id"].tolist()
 
     # Build one formatted line per row:
