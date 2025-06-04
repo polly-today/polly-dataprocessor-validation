@@ -8,37 +8,6 @@ import json
 import openai
 from io import BytesIO
 from PIL import Image
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-
-
-def load_inputs():
-    """
-    Load inputs from the database and return as a pandas DataFrame.
-    """
-    # Load database URL from .env file
-    load_dotenv()
-    database_url = os.getenv("DATABASE_URL")
-    if database_url is None:
-        raise RuntimeError("DATABASE_URL not found—did you create a .env with that variable?")
-
-    # Create a SQLAlchemy engine to run SQL queries
-    engine = create_engine(database_url)
-
-    # Select all data from the 'inputs' table
-    query = "SELECT * FROM inputs;"  
-
-    # Run the query and load into a DataFrame
-    try:
-        df = pd.read_sql(query, con=engine)
-        print(df)
-        return df
-    except Exception as e:
-        print("Error executing query:", e)
-        return None
-    finally:
-        engine.dispose()
-
 
 def load_csv(file_path):
     """
@@ -155,16 +124,19 @@ def get_args(inputs) -> argparse.Namespace:
 def get_image_from_base64(b64_string):
     # 1) Decode the Base64 string into bytes
     try:
-        img_data = base64.b64decode(b64_string)
+        raw = base64.b64decode(b64_string)
     except Exception as e:
         print(f"ERROR decoding Base64: {e}")
         return None
 
     # 2) Load those bytes into a PIL Image
     try:
-        img = Image.open(BytesIO(img_data))
+        img = Image.open(BytesIO(raw))
     except Exception as e:
         print(f"ERROR loading image from bytes: {e}")
         return None
     return img
+
+
+
 

@@ -1,14 +1,14 @@
 CREATE TABLE public.inputs (
     id                  SERIAL PRIMARY KEY,                                   
-    data_processor_id   INT NOT NULL, 
+    data_processor_id   INT, 
     supplier_name       TEXT NOT NULL,
     supplier_id         UUID NOT NULL,
     source_type         TEXT NOT NULL CHECK (source_type IN ('Email', 'WhatsApp')),                                                                  
-    email_address       TEXT NOT NULL,
-    phone_number        TEXT NOT NULL,
+    email_address       TEXT,
+    phone_number        TEXT,
     date_of_sending     TIMESTAMPTZ NOT NULL,
     email_subject       TEXT,
-    value               TEXT NOT NULL,                                         
+    value               TEXT,                                         
     value_type          VARCHAR(10) NOT NULL CHECK (value_type IN ('pdf','img','xlsx','txt')),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
