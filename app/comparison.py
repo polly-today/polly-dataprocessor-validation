@@ -98,7 +98,6 @@ def get_value_similarity(target_value, llm_value, column):
             raise ValueError(f"Unexpected NaN handling for column '{column}': target={target_value}, llm={llm_value}")
     # For numeric columns, check for exact match
     elif column in NUMERIC_COLUMNS:
-        print(f"Comparing numeric values in column '{column}': target={target_value}, llm={llm_value}")
         similarity = 1.0 if target_value == llm_value else 0.0
     else:
         s_target, s_llm = str(target_value), str(llm_value)
@@ -194,8 +193,8 @@ def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
 
     return pd.DataFrame(comparison_data)
 
-### Main Validation Function ###
-def validate_llm_output(input, response):
+### Main Comparison Function ###
+def compare_llm_to_target_output(input, response):
     """
     Validate the LLM output DataFrame against the target output.
     This function will check for required columns, preprocess data, and calculate similarity scores.
@@ -234,9 +233,7 @@ def validate_llm_output(input, response):
     target_output_df = load_csv(labeled_data_path)
 
     # Ensure both DataFrames have the required columns and preprocess them
-    print("Checking required columns")
     llm_output_df, target_output_df = check_required_columns(llm_output_df, target_output_df)
-    print("Preprocessing data")
     llm_output_df, target_output_df = preprocess_data(llm_output_df, target_output_df)
 
     # Get rows from target_output where supplier_name, date_of_sending, email_adress, phone_number, email_subject match the input_id
@@ -257,22 +254,12 @@ def validate_llm_output(input, response):
     target_output_df = relevant_target_rows.reset_index(drop=True)
 
     # Select the relevant columns for comparison
-    print("Selecting comparison columns")
     llm_output_df, target_output_df = select_comparison_columns(llm_output_df, target_output_df)
 
-    print(f"LLM shape: {llm_output_df.shape}")
-    print(f"Target shape: {target_output_df.shape}")
-
     # Link rows between the LLM output and the target output
-    print("Link rows between LLM output and target output")
     target_llm_links = link_rows_hungarian(llm_output_df, target_output_df, min_score=0.0)
-    print("Row matches:", target_llm_links)
 
-    for i, j in target_llm_links.items():
-        target_row = target_output_df.iloc[i]
-        llm_row = llm_output_df.iloc[j] if j is not None else None
-
-    
+    # Create a DataFrame with the value comparisons 
     value_comparison_df = get_value_comparison_df(llm_output_df, target_output_df, target_llm_links)
 
     return value_comparison_df

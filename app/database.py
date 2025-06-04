@@ -14,7 +14,7 @@ engine = create_engine(database_url)
 
 def load_inputs():
     """
-    Load inputs from the database and return as a pandas DataFrame.
+    Load inputs table from the database and return as a pandas DataFrame.
     """
     # Select all data from the 'inputs' table
     query = "SELECT * FROM inputs;"  
@@ -27,9 +27,6 @@ def load_inputs():
     except Exception as e:
         print("Error loading inputs from database:", e)
         return None
-    finally:
-        engine.dispose()
-
 
 def insert_run(run_id, input_id, system_prompt, batch_id=None):
     """
@@ -63,8 +60,6 @@ def insert_run(run_id, input_id, system_prompt, batch_id=None):
     except Exception as e:
         print("Error inserting into runs table:", e)
         return False
-    finally:
-        engine.dispose()
 
     return True
 
@@ -106,7 +101,14 @@ def update_run(run_id, input_id, status, llm_output=None, error_message=None):
     except Exception as e:
         print("Error updating runs table:", e)
         return False
-    finally:
-        engine.dispose()
-
     return True
+
+def dispose_engine():
+    """
+    Dispose the SQLAlchemy engine to release resources.
+    """
+    if engine:
+        engine.dispose()
+        print("Database engine disposed.")
+    else:
+        print("No database engine to dispose.")
