@@ -103,6 +103,16 @@ def update_run(run_id, input_id, status, llm_output=None, error_message=None):
         return False
     return True
 
+def update_results(value_comparison_df):
+    # Finally, push it to the `results` table.  This will INSERT all rows in one go.
+    value_comparison_df.to_sql(
+        "results", 
+        con=engine, 
+        if_exists="append", 
+        index=False  # don’t write the DataFrame’s index as a separate column
+    )
+    return
+
 def dispose_engine():
     """
     Dispose the SQLAlchemy engine to release resources.

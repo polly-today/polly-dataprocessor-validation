@@ -185,7 +185,7 @@ def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
             comparison_data.append({
                 "target_row_index": i,
                 "llm_row_index": j,
-                "column_name": col,
+                "attribute": col,
                 "target_value": target_value,
                 "llm_value": llm_value,
                 "similarity_score": similarity
