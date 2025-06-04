@@ -31,14 +31,16 @@ def load_inputs():
         engine.dispose()
 
 
-def insert_run(input_id, system_prompt):
+def insert_run(run_id, input_id, system_prompt, batch_id=None):
     """
     Record a run in the database with the given input ID and system prompt.
     Returns True if successful, False otherwise.
     """
     # Prepare the data to insert
     run_data = {
+        "id": run_id,
         "input_id": input_id,
+        "batch_id": batch_id,
         "system_prompt": system_prompt,
         "status": "pending",
         "settings": None,
@@ -50,9 +52,9 @@ def insert_run(input_id, system_prompt):
     # Create engine and perform INSERT
     insert_sql = text("""
         INSERT INTO public.runs
-            (input_id, system_prompt, status, settings, created_at, updated_at, llm_output)
+            (id, input_id, batch_id, system_prompt, status, settings, created_at, updated_at, llm_output)
         VALUES
-            (:input_id, :system_prompt, :status, :settings, :created_at, :updated_at, :llm_output)
+            (:id, :input_id, :batch_id, :system_prompt, :status, :settings, :created_at, :updated_at, :llm_output)
     """)
 
     try:
@@ -66,13 +68,14 @@ def insert_run(input_id, system_prompt):
 
     return True
 
-def update_run(input_id, status, llm_output=None, error_message=None):
+def update_run(run_id, input_id, status, llm_output=None, error_message=None):
     """
     Update the status (and LLM output) of the most recent run for the given input ID.
     Returns True if successful, False otherwise.
     """
     # Prepare the data to update
     update_data = {
+        "run_id": run_id,   
         "input_id": input_id,
         "status": status,
         "llm_output": llm_output,
@@ -94,7 +97,7 @@ def update_run(input_id, status, llm_output=None, error_message=None):
                     ORDER BY created_at DESC
                     LIMIT 1
                 ) AS latest
-            WHERE r.id = latest.id;
+            WHERE r.id = :run_id
     """)
 
     try:

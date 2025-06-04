@@ -8,7 +8,7 @@ from datetime import datetime
 
 # ---------- Configuration ----------
 REQUIRED_COLUMNS = [
-    'supplier_name', 'sender', 'date', 'subject', 'type', 'variety',
+    'type', 'variety',
     'subvariety', 'size', 'piece', 'brand', 'package_type', 'class',
     'origin_country_code', 'net_weight', 'quantity_per_pallet', 'price',
     'remarks'
@@ -80,8 +80,8 @@ def check_required_columns(llm_output_df, target_output_df):
     if missing_llm or missing_target:
         raise ValueError(
             f"Missing required columns:\n"
-            f" - In df1: {missing_llm if missing_llm else 'None'}\n"
-            f" - In df2: {missing_target if missing_target else 'None'}"
+            f" - In llm_output: {missing_llm if missing_llm else 'None'}\n"
+            f" - In target_output: {missing_target if missing_target else 'None'}"
         )
     else:
         print("Both DataFrames contain all required columns.")

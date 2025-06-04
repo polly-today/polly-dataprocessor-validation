@@ -1,4 +1,4 @@
-supplier_name,date_of_sending,phone_number,email_adress,email_subject,type,variety,subvariety,size,piece,brand,package_type,class,origin_country_code,net_weight,quantity_per_pallet,price,remarks
+supplier_name,date_of_sending,phone_number,email_address,email_subject,product_type,variety,sub_variety,size,piece,brand,package_type,product_class,country,net_weight,qty_per_pallet,price,remarks
 Pseelen,20-03-2025 9:05:00,,huub@pseelen.nl,Prijslijst,Cherry Tomato,Red Clamshell,unspecified,unspecified,9x250g,unspecified,Carton Box,unspecified,NL,2.25,184,0.00,
 Pseelen,20-03-2025 9:05:00,,huub@pseelen.nl,Prijslijst,Cherry Tomato,Red Loose,unspecified,unspecified,unspecified,unspecified,Carton Box,unspecified,MA,4.00,176,0.00,
 Pseelen,20-03-2025 9:05:00,,huub@pseelen.nl,Prijslijst,Cherry Vine Tomato,Red Loose,unspecified,unspecified,unspecified,Pauline,Carton Box,unspecified,NL,3.00,176,16.30,
