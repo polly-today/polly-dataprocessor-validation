@@ -7,10 +7,6 @@ from enum import Enum
 import os
 from dotenv import load_dotenv
 
-class FileType(str, Enum):
-    EXCEL = "excel"
-    PDF = "pdf"
-    CSV = "csv"
 
 async def get_chat_gpt_response(
         system_prompt: str, 
@@ -18,9 +14,7 @@ async def get_chat_gpt_response(
         model: str,
         text_to_analize: str | None = None,
         encoded_image:str | None = None,
-        encoded_file_type:FileType | None = None,
-        encoded_filename:str | None = None,
-        encoded_file:str | None = None,
+        encoded_pdf:str | None = None,
         ) -> Any:
     
     # Get API key
@@ -36,7 +30,7 @@ async def get_chat_gpt_response(
     if text_to_analize:
         content.append({"type": "text", "text": text_to_analize})
 
-    if encoded_image:
+    elif encoded_image:
         content.append({
             "type": "image_url", 
             "image_url": {
@@ -44,41 +38,16 @@ async def get_chat_gpt_response(
                 "detail": "high"
                 }
             })
-        
-    if encoded_file and encoded_file_type:
-        match encoded_file_type:
-            case FileType.EXCEL:
-                if encoded_filename is None:
-                    encoded_filename = f"file_{int(time.time())}.xlsx"
-                # if encoded_filename.endswith('.xls'):
-                #     encoded_filename = encoded_filename.replace('.xls', '.xlsx')
-                content.append({
-                    "type": "file",
-                    "file": {
-                        "file_data": f"data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{encoded_file}",
-                        "filename": f"{encoded_filename}"
-                        }
-                    })
-            case FileType.PDF:
-                if encoded_filename is None:
-                    encoded_filename = f"file_{int(time.time())}.pdf"
-                content.append({
-                    "type": "file",
-                    "file": {
-                        "file_data": f"data:application/pdf;base64,{encoded_file}",
-                        "filename": f"{encoded_filename}"
-                        }
-                    })
-            case FileType.CSV:
-                if encoded_filename is None:
-                    encoded_filename = f"file_{int(time.time())}.csv"
-                content.append({
-                    "type": "file",
-                    "file": {
-                        "file_data": f"data:text/csv;base64,{encoded_file}",
-                        "filename": f"{encoded_filename}"
-                        }
-                    })
+    
+    elif encoded_pdf:
+        content.append({
+            "type": "file",
+            "file": {
+                "file_data": f"data:application/pdf;base64,{encoded_pdf}",
+                "filename": f"file_{int(time.time())}.pdf'"
+                }
+            })
+    
     
     chat_response = await client.beta.chat.completions.parse(
         model=model,

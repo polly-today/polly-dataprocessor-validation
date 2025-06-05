@@ -18,31 +18,13 @@ Each report is written twice on every run:
 
 Both versions include a leading timestamp_of_validation column so you always know when each row was generated.
 
----
 
-## Requirements
-
-- Python **3.8+**  
-- A virtual environment (recommended)  
-- Dependencies listed in `requirements.txt`
-
-
-**Usage**
-```bash
-python validation.py
-```
-After it finishes, you’ll see files like:
-latest_report_per_email.csv, all_report_per_email.csv, latest_report_per_attribute.csv, all_report_per_attribute.csv, etc.
 
 # TODOs
 
-- add instructions on how to run all examples at once
-- separate each scenario into different folder 
-- add python script to read from these new folders and perform the batch run
 - add masterdata into local db
 - add prompt builder service code to generate the prompt locally and send request to ai-svc to mimic data processor worker
-- provide each run a UUID and a timestamp
-- add SQL script for 1st database run - schema creation
+
 
 # How to use locally
 

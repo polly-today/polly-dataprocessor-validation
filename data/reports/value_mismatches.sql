@@ -9,6 +9,7 @@ FROM
     public.results
 WHERE 
     target_value <> llm_value
+   AND  attribute = 'country'
 ORDER BY 
     batch_id DESC, 
     run_id, 
