@@ -1,5 +1,12 @@
 # Configuration file for the application
 
+# Path to the labeled data CSV file
+labeled_data_path = "../data/labeled_data.csv"
+# Path to the manual prompt text file
+manual_prompt_path = "../data/prompt.txt"
+# Path to the response schema JSON file
+response_schema_path = "../data/response_schema.json"
+
 ### VALIDATION.py ###
 # Required columns for the target_output (labeled data)
 REQUIRED_COLUMNS_TARGET = [
@@ -23,8 +30,3 @@ SIMILARITY_WEIGHTS = {
     "product_type": 2.0,
     "price": 2.0,
 }
-
-# Path to the labeled data CSV file
-labeled_data_path = "../database/labeled_data.csv"
-manual_prompt_path = "../database/prompt.txt"
-response_schema_path = "../database/product_offers_schema.json"

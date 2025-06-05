@@ -9,3 +9,5 @@ create table public.results (
     similarity_score    FLOAT8 DEFAULT NULL
 );
 
+select * from public.results;
+

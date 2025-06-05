@@ -4,15 +4,15 @@ import numpy as np
 import openai
 from Levenshtein import ratio as levenshtein_ratio
 import pandas as pd
-from utils import load_csv
-from database import load_inputs
+from utils import load_csv, load_inputs
 from datetime import datetime, timedelta
 from scipy.optimize import linear_sum_assignment
 from config import (
     REQUIRED_COLUMNS_TARGET,
     REQUIRED_COLUMNS_COMPARISON,
     NUMERIC_COLUMNS,
-    SIMILARITY_WEIGHTS
+    SIMILARITY_WEIGHTS,
+    labeled_data_path
 )
 
 
@@ -227,7 +227,6 @@ def compare_llm_to_target_output(input, response):
     print(llm_output_df.head())
 
     # Load the target output from the labeled data CSV
-    labeled_data_path = "../database/labeled_data.csv"
     if not os.path.exists(labeled_data_path):
         raise FileNotFoundError(f"Labeled data file not found: {labeled_data_path}")
     target_output_df = load_csv(labeled_data_path)
