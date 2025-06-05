@@ -1,0 +1,15 @@
+services:
+  polly-validation-db:
+    image: postgres:16.4
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=polly-validation
+      - POSTGRES_PASSWORD=Password_123
+      - POSTGRES_DB=polly-validation
+    volumes:
+      - db:/var/lib/postgresql/data
+
+volumes:
+  db:
+    driver: local
