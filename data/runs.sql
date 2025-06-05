@@ -11,4 +11,5 @@ CREATE TABLE public.runs (
     error_message TEXT        DEFAULT NULL
 );
 
-select * from public.runs;
+select * from public.runs
+order by batch_id desc;
