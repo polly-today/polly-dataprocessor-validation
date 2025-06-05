@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 import pandas as pd
 import os
+from config import manual_prompt_path
 
 # Load database URL from .env file
 load_dotenv()

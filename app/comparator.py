@@ -166,6 +166,15 @@ def link_rows_hungarian(llm_output_df, target_output_df, min_score=0.0):
 
     return target_llm_links
 
+def get_unmatched_llm_rows(target_llm_links, llm_output_df):
+    """
+    Get the indices of LLM rows that are not matched to any target row.
+    """
+    # Get the indices of matched rows from the target_llm_links dictionary
+    matched_indices = set(target_llm_links.values())
+    unmatched_indices = [i for i in range(len(llm_output_df)) if i not in matched_indices]
+    return unmatched_indices
+
 def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
     """
     Create a DataFrame with the following columns: run_id, target_row_index, llm_row_index, column_name, target_value, llm_value, similarity_score
@@ -189,6 +198,20 @@ def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
                 "target_value": target_value,
                 "llm_value": llm_value,
                 "similarity_score": similarity
+            })
+
+    # Add unmatched LLM rows with NaN values for target_value and similarity_score 
+    unmatched_llm_rows= get_unmatched_llm_rows(target_llm_links, llm_output_df)
+    for k in unmatched_llm_rows:
+        llm_row = llm_output_df.iloc[k]
+        for col in REQUIRED_COLUMNS_COMPARISON:
+            comparison_data.append({
+                "target_row_index": None,
+                "llm_row_index": k,
+                "attribute": col,
+                "target_value": None,
+                "llm_value": llm_row[col],
+                "similarity_score": 0
             })
 
     return pd.DataFrame(comparison_data)

@@ -10,3 +10,5 @@ CREATE TABLE public.runs (
     LLM_output    JSONB       DEFAULT '{}'::jsonb,
     error_message TEXT        DEFAULT NULL
 );
+
+select * from public.runs;
