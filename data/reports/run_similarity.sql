@@ -14,8 +14,9 @@
 WITH per_offer AS (
   -- Step 1: Aggregate at the offer level for each email (run_id)
   SELECT
-    batch_id,
+    runs.batch_id,
     run_id,
+    runs.input_id, 
     target_row_index,
     AVG(similarity_score)        AS offer_avg_similarity,   
       -- Compute the average similarity across all attributes for this single offer.
@@ -30,9 +31,14 @@ WITH per_offer AS (
       -- If you prefer the sample standard deviation, use STDDEV_SAMP(similarity_score) instead.
 
   FROM public.results
+  left join public.runs ON runs.id = results.run_id
+  WHERE
+    runs.status = 'completed'  -- Only consider completed runs to ensure data integrity.
+    -- You can adjust this condition based on your needs, e.g., to include only certain batches.
   GROUP BY
-    batch_id,
+    runs.batch_id,
     run_id,
+    runs.input_id,
     target_row_index
     -- Grouping by both run_id and target_row_index so that each combination
     -- (i.e., each offer within each email) becomes one aggregated row.
@@ -42,6 +48,7 @@ WITH per_offer AS (
 SELECT
   batch_id,
   run_id,
+  input_id,
   COUNT(*)                         AS num_offers,               
     -- Count how many rows exist in the CTE per_offer for this run_id.
     -- Since each row in per_offer represents a unique (run_id, target_row_index),
@@ -63,11 +70,12 @@ FROM per_offer
 -- with the aggregated metrics for that offer.
 GROUP BY
   batch_id,
+  input_id,
   run_id
   -- Group by run_id so that the outer query produces one row per email/run.
 ORDER BY
   batch_id DESC,
-  run_id;
+  input_id;
   -- Sort output by run_id for readability. You can change the ordering if needed, 
   -- e.g., ORDER BY run_avg_of_offer_avgs DESC to see the runs with highest 
   -- average offer scores first.

@@ -9,5 +9,18 @@ create table public.results (
     similarity_score    FLOAT8 DEFAULT NULL
 );
 
-select* from results
-where batch_id = '20250609122857' and similarity_score != 1.0
+
+
+WITH aubergine_rows AS (
+  SELECT DISTINCT run_id, target_row_index
+    FROM public.results
+   WHERE target_value LIKE '%Cherry Tomat%' --and batch_id = '20250609152328'
+)
+SELECT r.*
+  FROM public.results r
+  JOIN aubergine_rows ar
+    ON r.run_id            = ar.run_id
+   AND r.target_row_index = ar.target_row_index
+   --WHERE r.target_value LIKE 'Cherry Tomat%' 
+
+

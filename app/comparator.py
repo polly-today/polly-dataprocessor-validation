@@ -12,6 +12,7 @@ from config import (
     REQUIRED_COLUMNS_COMPARISON,
     NUMERIC_COLUMNS,
     SIMILARITY_WEIGHTS,
+    TEXT_COLUMNS,
     labeled_data_path
 )
 
@@ -69,26 +70,8 @@ def preprocess_data(llm_output_df, target_output_df):
         )
     
     # 4) Replace 'N/A - unspecified' with 'unspecified' in string columns
-    text_columns = set(REQUIRED_COLUMNS_COMPARISON) - set(NUMERIC_COLUMNS)
-    for col in text_columns:
+    for col in TEXT_COLUMNS:
         llm_output_df[col] = llm_output_df[col].replace('N/A - unspecified', 'unspecified')
-    
-    # If llm value  'NoneType' 
-    # print("Replacing missing values with 'unspecified'...")
-    # llm_output_df.fillna('unspecified', inplace=True)
-    # target_output_df.fillna('unspecified', inplace=True)
-    # llm_output_df.replace('N/A - unspecified', 'unspecified', inplace=True)
-    # target_output_df.replace('N/A - unspecified', 'unspecified', inplace=True)    
-
-    # print("Converting numeric fields...")
-    # for col in ['product_class', 'net_weight', 'qty_per_pallet', 'price']:
-    #     is_int = col in {'product_class', 'qty_per_pallet'}
-    #     for df in [llm_output_df, target_output_df]:
-    #         df[col] = pd.to_numeric(df[col], errors='coerce')
-    #         if is_int:
-    #             df[col] = df[col].astype('Int64')
-    #         else:
-    #             df[col] = df[col].round(2)
     
     # Ensure date_of_sending is a datetime object in the same time zone
     target_output_df["date_of_sending"] = pd.to_datetime(
@@ -110,24 +93,42 @@ def get_value_similarity(target_value, llm_value, column):
     - For string columns: Levenshtein ratio (0–100)/100
     """
     # If one of the values is NaN, we handle it separately
-    if pd.isna(target_value) or pd.isna(llm_value):
-        # When both values are NaN, we treat it as a perfect match
-        if pd.isna(target_value) and pd.isna(llm_value):
-            similarity = 1.0
-        # When LLM value is NaN and target is not NaN, we treat it as a partial match
-        elif pd.isna(llm_value) and not pd.isna(target_value):
-            similarity = 0.5
-        # When target is NaN and LLM value is not NaN, we treat it as a mismatch
-        elif pd.isna(target_value) and not pd.isna(llm_value):
-            similarity = 0.0
+    if column in TEXT_COLUMNS:
+        if target_value == 'unspecified' or llm_value == 'unspecified':
+            # When both values are 'unspecified', we treat it as a perfect match
+            if target_value == 'unspecified' and llm_value == 'unspecified':
+                similarity = 1.0
+            # When LLM value is 'unspecified' and target is not, we treat it as a partial match
+            elif llm_value == 'unspecified' and target_value != 'unspecified':
+                similarity = 0.5
+            # When target is 'unspecified' and LLM value is not, we treat it as a mismatch
+            elif target_value == 'unspecified' and llm_value != 'unspecified':
+                similarity = 0.0
+            else:
+                raise ValueError(f"Unexpected NaN handling for column '{column}': target={target_value}, llm={llm_value}")
         else:
-            raise ValueError(f"Unexpected NaN handling for column '{column}': target={target_value}, llm={llm_value}")
+            # For string columns, calculate the Levenshtein ratio
+            s_target, s_llm = str(target_value), str(llm_value)
+            similarity = levenshtein_ratio(s_target, s_llm)
+    
     # For numeric columns, check for exact match
     elif column in NUMERIC_COLUMNS:
-        similarity = 1.0 if target_value == llm_value else 0.0
+        if pd.isna(target_value) or pd.isna(llm_value):
+            if pd.isna(target_value) and pd.isna(llm_value):
+                similarity = 1.0
+            elif not pd.isna(target_value) and pd.isna(llm_value):
+                # Target is not NaN, LLM value is NaN
+                similarity = 0.5
+            elif pd.isna(target_value) and not pd.isna(llm_value):
+                # Target is NaN, LLM value is not NaN
+                similarity = 0.0
+        elif target_value == llm_value:
+            similarity = 1.0
+        else:
+            similarity = 0.0
     else:
-        s_target, s_llm = str(target_value), str(llm_value)
-        similarity = levenshtein_ratio(s_target, s_llm)
+        raise ValueError(f"Unsupported column type for similarity calculation: {column}")
+    
     return similarity
 
 def get_row_similarity(target_row, llm_row, columns, SIMILARITY_WEIGHTS=None):

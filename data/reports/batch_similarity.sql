@@ -110,5 +110,6 @@ SELECT
   batch_avg_of_run_avgs   AS mean_similarity_across_runs,   -- Mean of per-run offer averages
   batch_stddev_of_run_avgs AS stddev_similarity_across_runs  -- Stddev of per-run offer averages
 FROM per_batch
+where batch_id = '20250609162700'
 ORDER BY
   batch_id DESC;
