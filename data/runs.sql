@@ -11,15 +11,6 @@ CREATE TABLE public.runs (
     error_message TEXT        DEFAULT NULL
 );
 
-select * from inputs
-order by id asc
-
-select * from runs
-order by batch_id desc
-
--- get results from top batch_id if you sort on descending order
-select * from runs
-order by batch_id desc, id asc;
 
 
 

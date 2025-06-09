@@ -14,7 +14,7 @@ create table public.results (
 WITH aubergine_rows AS (
   SELECT DISTINCT run_id, target_row_index
     FROM public.results
-   WHERE target_value LIKE '%Cherry Tomat%' --and batch_id = '20250609152328'
+   WHERE target_value LIKE '%Aubergine%' and batch_id = '20250609162700'
 )
 SELECT r.*
   FROM public.results r
