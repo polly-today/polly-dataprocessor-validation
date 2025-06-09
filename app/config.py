@@ -25,7 +25,7 @@ REQUIRED_COLUMNS_COMPARISON = [
 ]
 
 # Numerical columns for comparison
-NUMERIC_COLUMNS = {"net_weight", "qty_per_pallet", "price", "piece"}
+NUMERIC_COLUMNS = {"net_weight", "qty_per_pallet", "price"}
 
 # Weights for similarity: override “default = 1.0” logic per‐column
 SIMILARITY_WEIGHTS = {

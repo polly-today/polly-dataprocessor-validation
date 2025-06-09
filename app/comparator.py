@@ -48,21 +48,47 @@ def preprocess_data(llm_output_df, target_output_df):
     Preprocess the DataFrames by replacing 'unspecified' with NaN,
     converting numeric fields, and normalizing date fields.
     """
-    print("Replacing missing values with 'unspecified'...")
-    llm_output_df.fillna('unspecified', inplace=True)
-    target_output_df.fillna('unspecified', inplace=True)
-    llm_output_df.replace('N/A - unspecified', 'unspecified', inplace=True)
-    target_output_df.replace('N/A - unspecified', 'unspecified', inplace=True)    
+    # 1) Coerce everything in numeric_cols to float64 (NaN for bad/non-numeric)
+    for df in (llm_output_df, target_output_df):
+        df[list(NUMERIC_COLUMNS)] = df[list(NUMERIC_COLUMNS)].apply(pd.to_numeric, errors='coerce')
+    
+    # 2) In the LLM frame: mask zeros and NaNs → <NA>
+    for col in NUMERIC_COLUMNS:
+        llm_output_df[col] = (
+            llm_output_df[col]
+            .mask(llm_output_df[col].isna() | (llm_output_df[col] == 0))  # NaN or zero → NA
+            .astype('Float64')                                          # ensure nullable float
+        )
 
-    print("Converting numeric fields...")
-    for col in ['product_class', 'net_weight', 'qty_per_pallet', 'price']:
-        is_int = col in {'product_class', 'qty_per_pallet'}
-        for df in [llm_output_df, target_output_df]:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            if is_int:
-                df[col] = df[col].astype('Int64')
-            else:
-                df[col] = df[col].round(2)
+    # 3) In the target frame: mask NaNs → <NA> (but leave real zeros)
+    for col in NUMERIC_COLUMNS:
+        target_output_df[col] = (
+            target_output_df[col]
+            .mask(target_output_df[col].isna())  # only NaN → NA
+            .astype('Float64')
+        )
+    
+    # 4) Replace 'N/A - unspecified' with 'unspecified' in string columns
+    text_columns = set(REQUIRED_COLUMNS_COMPARISON) - set(NUMERIC_COLUMNS)
+    for col in text_columns:
+        llm_output_df[col] = llm_output_df[col].replace('N/A - unspecified', 'unspecified')
+    
+    # If llm value  'NoneType' 
+    # print("Replacing missing values with 'unspecified'...")
+    # llm_output_df.fillna('unspecified', inplace=True)
+    # target_output_df.fillna('unspecified', inplace=True)
+    # llm_output_df.replace('N/A - unspecified', 'unspecified', inplace=True)
+    # target_output_df.replace('N/A - unspecified', 'unspecified', inplace=True)    
+
+    # print("Converting numeric fields...")
+    # for col in ['product_class', 'net_weight', 'qty_per_pallet', 'price']:
+    #     is_int = col in {'product_class', 'qty_per_pallet'}
+    #     for df in [llm_output_df, target_output_df]:
+    #         df[col] = pd.to_numeric(df[col], errors='coerce')
+    #         if is_int:
+    #             df[col] = df[col].astype('Int64')
+    #         else:
+    #             df[col] = df[col].round(2)
     
     # Ensure date_of_sending is a datetime object in the same time zone
     target_output_df["date_of_sending"] = pd.to_datetime(
@@ -172,8 +198,8 @@ def get_unmatched_llm_rows(target_llm_links, llm_output_df):
     """
     # Get the indices of matched rows from the target_llm_links dictionary
     matched_indices = set(target_llm_links.values())
-    unmatched_indices = [i for i in range(len(llm_output_df)) if i not in matched_indices]
-    return unmatched_indices
+    unmatched_llm_indices = [i for i in range(len(llm_output_df)) if i not in matched_indices]
+    return unmatched_llm_indices
 
 def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
     """
@@ -188,7 +214,14 @@ def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
 
         for col in REQUIRED_COLUMNS_COMPARISON:
             target_value = target_row[col]
-            llm_value = llm_row[col] if llm_row is not None else None
+            if llm_row is None:
+                # If the LLM row is None, set llm_value to NaN or 'unspecified' based on column type
+                if col in NUMERIC_COLUMNS:
+                    llm_value = pd.NA
+                else:
+                    llm_value = 'unspecified'
+            else:
+                llm_value = llm_row[col]
 
             similarity = get_value_similarity(target_value, llm_value, col)
             comparison_data.append({
@@ -201,15 +234,20 @@ def get_value_comparison_df(llm_output_df, target_output_df, target_llm_links):
             })
 
     # Add unmatched LLM rows with NaN values for target_value and similarity_score 
-    unmatched_llm_rows= get_unmatched_llm_rows(target_llm_links, llm_output_df)
-    for k in unmatched_llm_rows:
+    unmatched_llm_indices= get_unmatched_llm_rows(target_llm_links, llm_output_df)
+    for k in unmatched_llm_indices:
         llm_row = llm_output_df.iloc[k]
         for col in REQUIRED_COLUMNS_COMPARISON:
+            # Determine target_value default based on column type
+            if col in NUMERIC_COLUMNS:
+                target_value = pd.NA
+            else:
+                target_value = 'unspecified'
             comparison_data.append({
                 "target_row_index": None,
                 "llm_row_index": k,
                 "attribute": col,
-                "target_value": None,
+                "target_value": target_value,
                 "llm_value": llm_row[col],
                 "similarity_score": 0
             })
@@ -247,8 +285,6 @@ def compare_llm_to_target_output(input, response):
     except Exception as e:
         raise ValueError(f"Could not convert LLM output to DataFrame: {e}")
 
-    print(llm_output_df.head())
-
     # Load the target output from the labeled data CSV
     if not os.path.exists(labeled_data_path):
         raise FileNotFoundError(f"Labeled data file not found: {labeled_data_path}")
@@ -266,7 +302,7 @@ def compare_llm_to_target_output(input, response):
         #(target_output_df["phone_number"] == phone_number) & TO DO: be able to match phone numbers
         (target_output_df["email_subject"] == email_subject)
     ]
-
+    
     # If no matching rows are found, raise an error
     if relevant_target_rows.empty:
         raise ValueError(f"No matching rows found in target output for input ID {input_id}.")
@@ -284,4 +320,14 @@ def compare_llm_to_target_output(input, response):
     # Create a DataFrame with the value comparisons 
     value_comparison_df = get_value_comparison_df(llm_output_df, target_output_df, target_llm_links)
 
+    # Print rows where target_value and llm_value are not equal
+    mismatches = value_comparison_df[
+        (value_comparison_df["target_value"] != value_comparison_df["llm_value"])
+    ]
+    # from mismatches, print attribute, target_value, llm_value
+    if not mismatches.empty:
+        print("Mismatches found:")
+        for _, row in mismatches.iterrows():
+            print(f"Attribute: {row['attribute']}, Target Value: {row['target_value']} ({type(row['target_value'])}), LLM Value: {row['llm_value']} ({type(row['llm_value'])})")
+            print(f"Similarity Score: {row['similarity_score']}")
     return value_comparison_df

@@ -65,16 +65,16 @@ python main.py -p default
 # Process inputs 1 and 3 with the built-in prompt
 python main.py -p default -i 1 3
 # Process all inputs with a custom (manual) prompt from prompt.txt
-python main.py -p manual
+python main.py -p manual -s 'Added product type rule for Aubergine: Aubergine is by default purple.'
 # Process inputs 5, 8, 10 with a custom prompt
-python main.py --prompt manual --inputs 5 8 10
+python main.py --prompt manual --inputs 5 8 10 -s 'Added product type rule for Aubergine: Aubergine is by default purple.'
 ```
 
 
 ## What happens inside the script
 **Argument parsing**
 
-If you run with no flags at all (i.e. python main.py and no -p or -i), the parser will detect that sys.argv has length 1 and will immediately print the help message (including a formatted list of all valid IDs) and exit.
+If you omit both -p/--prompt and -i/--inputs, the script will immediately print the full help text (including a formatted list of all valid IDs) and then exit. Because every “manual” run must document what you changed, the parser will fail with -p manual without -s. To avoid this, always supply -s 'your description' whenever you choose -p manual.
 
 **Loading and filtering inputs**
 
@@ -87,7 +87,7 @@ A new batch_id is generated using the current timestamp (e.g. 20250605142317).
 
 For each input_id in args.inputs, the script:
 * Generates a fresh UUID as run_id.
-* Calls insert_run(run_id, input_id, system_prompt, batch_id) to record that run in your database (public.runs) with status "pending".
+* Calls insert_run(run_id, input_id, system_prompt, batch_id, settings) to record that run in your database (public.runs) with status "pending".
 
 **Per-input processing**
 

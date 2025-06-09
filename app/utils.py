@@ -40,7 +40,7 @@ def load_inputs():
         return None
 
 
-def insert_run(run_id, input_id, system_prompt, batch_id=None):
+def insert_run(run_id, input_id, system_prompt, batch_id=None, settings=None):
     """
     Record a run in the database with the given input ID and system prompt.
     Returns True if successful, False otherwise.
@@ -55,7 +55,8 @@ def insert_run(run_id, input_id, system_prompt, batch_id=None):
         "settings": None,
         "created_at": pd.Timestamp.now(),
         "updated_at": pd.Timestamp.now(),
-        "llm_output": None
+        "llm_output": None,
+        "settings": settings
     }
 
     # Create engine and perform INSERT
@@ -76,14 +77,14 @@ def insert_run(run_id, input_id, system_prompt, batch_id=None):
     return True
 
 
-def update_run(run_id, input_id, status, llm_output=None, error_message=None):
+def update_run(batch_id, input_id, status, llm_output=None, error_message=None):
     """
     Update the status (and LLM output) of the most recent run for the given input ID.
     Returns True if successful, False otherwise.
     """
     # Prepare the data to update
     update_data = {
-        "run_id": run_id,   
+        "batch_id": batch_id,
         "input_id": input_id,
         "status": status,
         "llm_output": llm_output,
@@ -93,19 +94,12 @@ def update_run(run_id, input_id, status, llm_output=None, error_message=None):
 
     # Create engine and perform UPDATE
     update_sql = text("""
-        UPDATE public.runs AS r
+        UPDATE public.runs
             SET status     = :status,
                 llm_output = :llm_output,
                 updated_at = :updated_at,
                 error_message = :error_message     
-            FROM (
-                    SELECT id
-                    FROM public.runs
-                    WHERE input_id = :input_id
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                ) AS latest
-            WHERE r.id = :run_id
+            WHERE input_id = :input_id AND batch_id = :batch_id
     """)
 
     try:
@@ -211,7 +205,7 @@ def get_args(inputs) -> argparse.Namespace:
             f"{formatted_ids}\n\n"
             "If you omit -i/--inputs, the script will validate ALL inputs.\n"
             "Example usage:\n"
-            "  python main.py -p manual -i 101 203 305\n"
+            "  python main.py -p manual -i 101 203 305 -s 'Added product type rule for Aubergine'\n"
         )
     )
 
@@ -222,8 +216,17 @@ def get_args(inputs) -> argparse.Namespace:
         default="default",
         help=(
             "Choose which prompt to use:\n"
-            "  default → use the built-in prompt hardcoded in the script\n"
-            "  manual  → load the prompt text from `prompt.txt`"
+             "  default → use the default prompt in default_prompt.txt\n"
+             "  manual  → use your adjusted prompt in manual_prompt.txt"
+        )
+    )
+    # — Settings description, required if manual prompt selected  —
+    parser.add_argument(
+        "-s", "--settings",
+        type=str,
+        help=(
+            "When using manual prompt, describe what you adjusted "
+            "compared to the default (e.g. added product types, re-ordered rules)"
         )
     )
 
@@ -248,9 +251,15 @@ def get_args(inputs) -> argparse.Namespace:
     
     # Return the parsed arguments as a Namespace 
     args = parser.parse_args()
-    
-    # Set argse.inputs to set to ensure uniqueness
-    args.inputs = set(args.inputs) if args.inputs else None
+
+    # If manual prompt, settings description is mandatory
+    if args.prompt == "manual" and not args.settings:
+        parser.error("When using `-p manual`, you must also pass `-s 'description of adjustments'`.\n"
+                     "Example: `python main.py -p manual -s 'Added product type rule for Aubergine.'`")
+
+    # Set args.inputs to an ordered list of unique items to maintain order
+    if args.inputs is not None:
+        args.inputs = sorted(set(args.inputs))
 
     return args
 

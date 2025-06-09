@@ -9,10 +9,5 @@ create table public.results (
     similarity_score    FLOAT8 DEFAULT NULL
 );
 
-select * from public.results
-where run_id = '71116e15-8f0c-47a8-9d61-5bb25b88bf42' and llm_value = '7.0'
-order by batch_id desc;
-
-select * from inputs
-order by id asc;
-
+select* from results
+where batch_id = '20250609122857' and similarity_score != 1.0
