@@ -38,11 +38,13 @@ async def main():
     # Generate a batch ID
     batch_id = pd.Timestamp.now().strftime("%Y%m%d%H%M%S")
     print(f"Batch ID: {batch_id}")
+    run_ids = {}
 
     # Insert all the runs in the database with a unique run ID and the system prompt, 
     # starting with a status of "pending"
     for input_id in input_ids_to_validate:
         run_id = str(uuid.uuid4())
+        run_ids[input_id] = run_id
         insert_run(run_id, input_id, system_prompt, batch_id=batch_id, settings=setting_value)
 
     # Perform LLM data extraction and validation for each input
@@ -117,7 +119,7 @@ async def main():
             continue
 
         # Save the validation results to database
-        value_comparison_df["run_id"] = run_id
+        value_comparison_df["run_id"] = run_ids[input_id]
         value_comparison_df["batch_id"] = batch_id
         # Set all target_value and llm_value to string type so they can be stored in the database
         # This is necessary because the database does not support numerical and string values in the same column

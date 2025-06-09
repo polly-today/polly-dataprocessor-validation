@@ -324,10 +324,4 @@ def compare_llm_to_target_output(input, response):
     mismatches = value_comparison_df[
         (value_comparison_df["target_value"] != value_comparison_df["llm_value"])
     ]
-    # from mismatches, print attribute, target_value, llm_value
-    if not mismatches.empty:
-        print("Mismatches found:")
-        for _, row in mismatches.iterrows():
-            print(f"Attribute: {row['attribute']}, Target Value: {row['target_value']} ({type(row['target_value'])}), LLM Value: {row['llm_value']} ({type(row['llm_value'])})")
-            print(f"Similarity Score: {row['similarity_score']}")
     return value_comparison_df
