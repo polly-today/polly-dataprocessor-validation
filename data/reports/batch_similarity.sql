@@ -14,6 +14,7 @@ WITH per_offer AS (
   SELECT
     r.run_id,
     rn.batch_id,
+    rn.settings,
     r.target_row_index,
 
     -- Average similarity across all attributes of this one offer.
@@ -31,6 +32,7 @@ WITH per_offer AS (
   GROUP BY
     r.run_id,
     rn.batch_id,
+    rn.settings,
     r.target_row_index
     -- Group by run_id, batch_id, and target_row_index so each row in per_offer
     -- represents one distinct offer within a specific run.
@@ -48,6 +50,7 @@ per_run AS (
   SELECT
     run_id,
     batch_id,
+    settings,
 
     COUNT(*)                              AS num_offers_in_run,
       -- per_offer has one row per offer, so COUNT(*) gives how many offers in this run.
@@ -67,7 +70,8 @@ per_run AS (
   FROM per_offer
   GROUP BY
     run_id,
-    batch_id
+    batch_id,
+    settings
     -- Group by run_id and batch_id so that each row here represents one run.
 ),
 
@@ -83,6 +87,7 @@ per_batch AS (
   ---------------------------------------------------------------------------------
   SELECT
     batch_id,
+    settings,
 
     COUNT(*)                             AS num_runs_in_batch,
       -- Count how many runs contributed to this batch.
@@ -98,18 +103,20 @@ per_batch AS (
 
   FROM per_run
   GROUP BY
-    batch_id
+    batch_id,
+    settings
     -- Group by batch_id so each row here represents one batch.
 )
 
 -- Final SELECT: per-batch aggregation with counts of runs and offers
 SELECT
   batch_id,
+  settings,                     -- Settings used for this batch
   num_runs_in_batch,             -- Number of runs contributing to this batch
   total_offers_in_batch,         -- Total offers across all those runs
   batch_avg_of_run_avgs   AS mean_similarity_across_runs,   -- Mean of per-run offer averages
   batch_stddev_of_run_avgs AS stddev_similarity_across_runs  -- Stddev of per-run offer averages
 FROM per_batch
-where batch_id = '20250609191603'
+--where batch_id = '20250610101541'
 ORDER BY
   batch_id DESC;
