@@ -1,5 +1,4 @@
 import time
-from fastapi import status, HTTPException
 from typing import Any
 from pydantic import BaseModel
 from openai import AsyncOpenAI
@@ -65,9 +64,4 @@ async def get_chat_gpt_response(
     elif issubclass(response_format, BaseModel):
         response_content = chat_response.choices[0].message.parsed
 
-    if response_content is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Received None content from chat response"
-        )
     return response_content
