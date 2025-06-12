@@ -3,15 +3,8 @@ import pandas as pd
 import sys
 import argparse
 from argparse import RawTextHelpFormatter
-import base64
-from io import BytesIO
-import pandas as pd
-import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-import pandas as pd
-import os
-from config import manual_prompt_path
 
 # Load database URL from .env file
 load_dotenv()

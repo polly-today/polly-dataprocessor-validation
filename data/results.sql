@@ -9,11 +9,6 @@ create table public.results (
     similarity_score    FLOAT8 DEFAULT NULL
 );
 
-select * from inputs
-
-
-
-
 
 WITH aubergine_rows AS (
   SELECT DISTINCT run_id, target_row_index, runs.input_id--, inputs.value
