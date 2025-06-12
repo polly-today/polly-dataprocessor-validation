@@ -1,0 +1,99 @@
+{
+  "type": "object",
+  "properties": {
+    "product_offers": {
+      "type": "array",
+      "description": "A list of product offers available.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_type": {
+            "type": "string",
+            "description": "The type of the product."
+          },
+          "variety": {
+            "type": "string",
+            "description": "The variety of the product."
+          },
+          "sub_variety": {
+            "type": "string",
+            "description": "The sub-variety of the product."
+          },
+          "size": {
+            "type": "string",
+            "description": "The size of the product."
+          },
+          "brand": {
+            "type": "string",
+            "description": "The brand of the product."
+          },
+          "package_type": {
+            "type": "string",
+            "description": "The type of packaging of the product."
+          },
+          "pallet": {
+            "type": "string",
+            "description": "Pallet information for the product."
+          },
+          "product_class": {
+            "type": "string",
+            "description": "The classification of the product."
+          },
+          "unit_type": {
+            "type": "string",
+            "description": "The unit type for the product."
+          },
+          "unit_trade_type": {
+            "type": "string",
+            "description": "The trade type of the unit."
+          },
+          "country": {
+            "type": "string",
+            "description": "The country of origin for the product."
+          },
+          "piece": {
+            "type": "string",
+            "description": "Piece information regarding the product."
+          },
+          "price": {
+            "type": "number",
+            "description": "The price of the product."
+          },
+          "net_weight": {
+            "type": "number",
+            "description": "The net weight of the product."
+          },
+          "qty_per_pallet": {
+            "type": "number",
+            "description": "The quantity of items per pallet."
+          },
+          "remarks": {
+            "type": "string",
+            "description": "Additional remarks regarding the product offer."
+          }
+        },
+        "required": [
+          "product_type",
+          "variety",
+          "sub_variety",
+          "size",
+          "brand",
+          "package_type",
+          "pallet",
+          "product_class",
+          "unit_type",
+          "unit_trade_type",
+          "country",
+          "piece",
+          "price",
+          "net_weight",
+          "qty_per_pallet",
+          "remarks"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["product_offers"],
+  "additionalProperties": false
+}
