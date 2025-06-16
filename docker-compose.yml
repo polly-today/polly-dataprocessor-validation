@@ -1,28 +1,37 @@
+version: '3.9'
+
 services:
   polly-validation-db:
     image: postgres:16.4
+    container_name: polly-validation-db
     ports:
-      - "5433:5432"       # host 5433 → container 5432
+      - "5433:5432"
     environment:
       POSTGRES_USER: polly-validation
       POSTGRES_PASSWORD: Password_123
       POSTGRES_DB: polly-validation
     volumes:
       - validation-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   pollydb:
     image: postgres:16.4
+    container_name: polly-db
     ports:
-      - "5432:5432"       # host 5432 → container 5432
+      - "5432:5432"
     environment:
       POSTGRES_USER: polly-api
       POSTGRES_PASSWORD: Password_123
       POSTGRES_DB: polly
     volumes:
       - polly-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
 
 volumes:
   validation-db-data:
-    driver: local
+    external: true
+    name: polly-dataprocessor-validation-val-db
+
   polly-db-data:
-    driver: local
+    external: true
+    name: polly-dataprocessor-validation-stg-db

@@ -70,7 +70,7 @@ def insert_run(run_id, input_id, system_prompt, batch_id=None, settings=None):
     return True
 
 
-def update_run(batch_id, input_id, status, llm_output=None, error_message=None):
+def update_run(batch_id, input_id, status, llm_output=None, error_message=None, system_prompt=None):
     """
     Update the status (and LLM output) of the most recent run for the given input ID.
     Returns True if successful, False otherwise.
@@ -82,7 +82,8 @@ def update_run(batch_id, input_id, status, llm_output=None, error_message=None):
         "status": status,
         "llm_output": llm_output,
         "updated_at": pd.Timestamp.now(),
-        "error_message": error_message
+        "error_message": error_message,
+        "system_prompt": system_prompt
     }
 
     # Create engine and perform UPDATE
@@ -91,7 +92,8 @@ def update_run(batch_id, input_id, status, llm_output=None, error_message=None):
             SET status     = :status,
                 llm_output = :llm_output,
                 updated_at = :updated_at,
-                error_message = :error_message     
+                error_message = :error_message,
+                system_prompt = :system_prompt
             WHERE input_id = :input_id AND batch_id = :batch_id
     """)
 
@@ -205,12 +207,13 @@ def get_args(inputs) -> argparse.Namespace:
     # — Prompt choice: built-in or manual  —
     parser.add_argument(
         "-p", "--prompt",
-        choices=["default", "manual"],
+        choices=["default", "manual", "dynamic"],
         default="default",
         help=(
             "Choose which prompt to use:\n"
              "  default → use the default prompt in default_prompt.txt\n"
-             "  manual  → use your adjusted prompt in manual_prompt.txt"
+             "  manual  → use your adjusted prompt in manual_prompt.txt\n"
+             "  dynamic → build a prompt dynamically based on product types within the input data\n"
         )
     )
     # — Settings description, required if manual prompt selected  —
