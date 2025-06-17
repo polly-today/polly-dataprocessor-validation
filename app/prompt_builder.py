@@ -284,7 +284,7 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         sizes = list(sizes.values())
         sizes.sort()
 
-        # TO DO: Retrieve product brands for the given product_type_id
+        # Retrieve product brands for the given product_type_id
         query = text("""
             SELECT brands.id, brands.name
             FROM public.product_type_brands
@@ -299,7 +299,7 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         brands = list(brands.values())
         brands.sort()
 
-        # TO DO: Retrieve product pieces for the given product_type_id
+        # Retrieve product pieces for the given product_type_id
         query = text("""
             SELECT pieces.id, pieces.name
             FROM public.product_type_pieces
@@ -315,8 +315,15 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         pieces.sort()
 
         # TO DO: Retrieve product_type_rules
+        query = text("""
+            SELECT rule
+            FROM public.product_type_rules
+            WHERE type_id = :product_type_id;
+        """)
+        result = conn.execute(query, {"product_type_id": product_type_id})
+        product_type_rules = [row[0] for row in result.fetchall()]
 
-        return product_type_aliases, varieties, variety_aliases, subvarieties, subvariety_aliases, variety_subvariety_dict, sizes, size_aliases, brands, brand_aliases, pieces, piece_aliases
+        return product_type_aliases, varieties, variety_aliases, subvarieties, subvariety_aliases, variety_subvariety_dict, sizes, size_aliases, brands, brand_aliases, pieces, piece_aliases, product_type_rules
 
 
 def write_prompt(
@@ -334,7 +341,8 @@ def write_prompt(
     unit_types, unit_type_aliases,
     unit_trade_types, unit_trade_type_aliases,
     countries, country_aliases,
-    supplier_rules):
+    supplier_rules,
+    product_type_rules):
     """
     Generates a dynamic prompt for extracting structured data from text based on the provided parameters.
     """
@@ -444,7 +452,10 @@ The following sections define allowed values per product_type. Only extract valu
             aliases_dict = product_type_aliases[product_type]
             if aliases_dict and len(aliases_dict) > 0:
                 aliases_list = next(iter(aliases_dict.values()))
-                prompt += f"- product_type aliases: {aliases_list}\n"
+                prompt += f"\n- product_type aliases: {aliases_list}\n"
+        
+        if product_type_rules.get(product_type):
+            prompt += f"\n- Extraction rules specific to this product type: {', '.join(product_type_rules[product_type])}\n"
 
         prompt += f"\n- variety\n\tOptions: {varieties[product_type]}\n"
         if variety_aliases.get(product_type):
@@ -502,10 +513,11 @@ def build_prompt(input, batch_id):
     brand_aliases_dict = {}
     pieces_dict = {}
     piece_aliases_dict = {}
+    product_type_rules_dict = {}
 
     # collect per product_type
     for product_type_id, product_type_name in product_type_ids.items():
-        product_type_aliases, varieties, variety_aliases, subvarieties, subvariety_aliases, variety_subvariety_dict, sizes, size_aliases, brands, brand_aliases, pieces, piece_aliases = retrieve_product_info(product_type_id, product_type_name, product_type_id)
+        product_type_aliases, varieties, variety_aliases, subvarieties, subvariety_aliases, variety_subvariety_dict, sizes, size_aliases, brands, brand_aliases, pieces, piece_aliases, product_type_rules = retrieve_product_info(product_type_id, product_type_name, product_type_id)
 
         product_type_aliases_dict[product_type_name] = product_type_aliases
         varieties_dict[product_type_name] = varieties
@@ -519,6 +531,7 @@ def build_prompt(input, batch_id):
         brand_aliases_dict[product_type_name] = brand_aliases
         pieces_dict[product_type_name] = pieces
         piece_aliases_dict[product_type_name] = piece_aliases
+        product_type_rules_dict[product_type_name] = product_type_rules
 
     prompt = write_prompt(
         relevant_product_types=set(product_type_ids.values()),
@@ -535,7 +548,8 @@ def build_prompt(input, batch_id):
         unit_types=unit_types, unit_type_aliases=unit_type_aliases,
         unit_trade_types=unit_trade_types, unit_trade_type_aliases=unit_trade_type_aliases,
         countries=countries, country_aliases=country_aliases,
-        supplier_rules=supplier_rules
+        supplier_rules=supplier_rules,
+        product_type_rules=product_type_rules_dict
     )
     
     return prompt
