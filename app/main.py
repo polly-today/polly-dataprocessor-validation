@@ -58,7 +58,7 @@ async def main():
 
         # If the prompt is dynamic, build the prompt based on the input
         if args.prompt == "dynamic":
-            system_prompt = build_prompt(inputs[inputs["id"] == input_id])
+            system_prompt = build_prompt(inputs[inputs["id"] == input_id], batch_id)
             update_run(batch_id, input_id, status="pending", llm_output=None, error_message=None, system_prompt=system_prompt)
 
         # Update the status to running for the given input ID
@@ -88,8 +88,8 @@ async def main():
         # Load response schema for the LLM output
         with open(response_schema_path, 'r') as file:
             response_schema = json.load(file)
-        
-        # Now call the LLM 
+
+        # Now call the LLM
         print(f"Calling LLM for input ID {input_id} with value type {value_type}...")
         try:
             response = await get_chat_gpt_response(

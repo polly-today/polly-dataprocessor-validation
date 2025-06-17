@@ -92,7 +92,7 @@ def retrieve_aliases(supplier_id, id_value_dict):
     return value_aliases
 
 
-def retrieve_product_types(relevant_product_types=None):
+def retrieve_product_types(relevant_product_types=None, batch_id=None, input_id=None):
     """
     Load product_types table from the database and return as a pandas DataFrame.
     """
@@ -111,6 +111,12 @@ def retrieve_product_types(relevant_product_types=None):
 
     print(f"The following product types were not found in the database and need to be added: {toBeAddedProductTypes}")
     
+    # If there are product types that need to be added, create or empty unfound_product_types table with the batch_id, input_id, and product_type names
+    if toBeAddedProductTypes:
+        with engine_val.connect() as conn:
+            for product_type in toBeAddedProductTypes:
+                conn.execute(text("INSERT INTO to_be_added_product_types (batch_id, input_id, product_type) VALUES (:batch_id, :input_id, :product_type);"), {"batch_id": batch_id, "input_id": input_id, "product_type": product_type})
+
     return product_types
 
 
@@ -264,8 +270,13 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         subvarieties.sort()
 
         # TO DO: Retrieve product sizes for the given product_type_id
-        query = text("SELECT id, name FROM sizes")
-        result = conn.execute(query)
+        query = text("""
+            SELECT sizes.id, sizes.name
+            FROM public.product_type_sizes
+            LEFT JOIN public.sizes ON public.product_type_sizes.size_id = sizes.id
+            WHERE product_type_id = :product_type_id;
+        """)
+        result = conn.execute(query, {"product_type_id": product_type_id})
         sizes = {row[0]: row[1] for row in result.fetchall()}
         #print(f"Sizes retrieved: {sizes.values()}")
         size_aliases = retrieve_aliases(supplier_id=supplier_id, id_value_dict=sizes)
@@ -274,8 +285,13 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         sizes.sort()
 
         # TO DO: Retrieve product brands for the given product_type_id
-        query = text("SELECT id, name FROM brands")
-        result = conn.execute(query)
+        query = text("""
+            SELECT brands.id, brands.name
+            FROM public.product_type_brands
+            LEFT JOIN public.brands ON public.product_type_brands.brand_id = brands.id
+            WHERE product_type_id = :product_type_id;
+        """)
+        result = conn.execute(query, {"product_type_id": product_type_id})
         brands = {row[0]: row[1] for row in result.fetchall()}
         #print(f"Brands retrieved: {brands.values()}")
         brand_aliases = retrieve_aliases(supplier_id=supplier_id, id_value_dict=brands)
@@ -284,8 +300,13 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         brands.sort()
 
         # TO DO: Retrieve product pieces for the given product_type_id
-        query = text("SELECT id, name FROM pieces")
-        result = conn.execute(query)
+        query = text("""
+            SELECT pieces.id, pieces.name
+            FROM public.product_type_pieces
+            LEFT JOIN public.pieces ON public.product_type_pieces.piece_id = pieces.id
+            WHERE product_type_id = :product_type_id;
+        """)
+        result = conn.execute(query, {"product_type_id": product_type_id})
         pieces = {row[0]: row[1] for row in result.fetchall()}
         #print(f"Pieces retrieved: {pieces.values()}")
         piece_aliases = retrieve_aliases(supplier_id=supplier_id, id_value_dict=pieces)
@@ -299,144 +320,155 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
 
 
 def write_prompt(
-        relevant_product_types,
-        product_type_aliases,
-        varieties, variety_aliases,
-        subvarieties, subvariety_aliases,
-        variety_subvariety_dict,
-        sizes, size_aliases,
-        brands, brand_aliases,
-        pieces, piece_aliases,
-        package_types, package_type_aliases,
-        pallets, pallet_aliases,
-        product_classes, product_class_aliases,
-        unit_types, unit_type_aliases,
-        unit_trade_types, unit_trade_type_aliases,
-        countries, country_aliases,
-        supplier_rules):
+    relevant_product_types,
+    product_type_aliases,
+    varieties, variety_aliases,
+    subvarieties, subvariety_aliases,
+    variety_subvariety_dict,
+    sizes, size_aliases,
+    brands, brand_aliases,
+    pieces, piece_aliases,
+    package_types, package_type_aliases,
+    pallets, pallet_aliases,
+    product_classes, product_class_aliases,
+    unit_types, unit_type_aliases,
+    unit_trade_types, unit_trade_type_aliases,
+    countries, country_aliases,
+    supplier_rules):
     """
     Generates a dynamic prompt for extracting structured data from text based on the provided parameters.
     """
 
-    prompt = f"""You are an expert data extractor. Your task is to extract detailed characteristics from the provided text and output them in a structured JSON format.
+    prompt = """
+You are an expert data extractor. Your task is to extract detailed characteristics from the provided text and output them in a structured JSON format.
 
-    Extraction instructions:
-    1. Loop over each offer in the input text and produce one object per offer in the JSON output.
-    2. Replace any alias with its canonical value.
-    3. Detect product_type: 
-    \t- Match against a ### Product Type heading or its aliases. 
-    \t- If no match is found, use "unspecified" and push the text to the remarks field.
-    4. Within that type-specific context, extract the following characteristics:
-    \t- variety
-    \t- sub_variety
-    \t- size (also known as "maat")
-    \t- pieces
-    \t- brand (also known as "merk")
-    5. Extract the following characteristics that are common across all types:
-    \t- package_type (also known as "verpakking")
-    \t- pallet
-    \t- class (also known as "klasse")
-    \t- unit_type
-    \t- unit_trade_type
-    \t- country (also known as "herkomst", "land" or "LvO")
-    \t- quantity_per_pallet (also known as "pp" or "cpp")
-    \t- net_weight (also known as "gewicht")
-    \t- price (also known as "euro")
-    \t- remarks
-    6. Translate non-English values to English where possible.
-    7. If the country value contains multiple codes (e.g. CR/BR, NL/BE/FR), split that single raw offer into separate offers—one per country code—and carry all other fields unchanged.
-    8. If the size field contains multiple values (e.g. 8/9 or 5/6/7), split it into separate offers with one value per offer. For example, 8/9 should yield two offers: one with size 8 and one with size 9. Always map each value separately. Do not keep combined size values like 8/9 or 5/6/7.
-    9. If a characteristic is not present in the input, set it to "unspecified".
-    10. Push any text that does not match the above characteristics to the "remarks" field.
-    """
+Extraction Instructions:
 
-    if supplier_rules != {}:
-        prompt += f"11. Supplier-specific rules:\n"
-        for rule in supplier_rules:
-            prompt += f"- {rule}\n"
-
-    prompt += f"""
-
-    Global definition block with fields that apply to every product type:
-    - package_type
-    Options: {package_types}
-    """
-    if package_type_aliases != {}:
-        prompt += f"Aliases: {package_type_aliases}\n"
-
-    prompt += f"""
+1. Loop over each offer in the input (i.e. any distinct product entry, typically separated by line breaks, bullet points, or identifiable product blocks) and produce one object per offer in the JSON output.
+2. Replace any alias with its canonical value.
+3. Detect product_type:
+    - Match against a ### Product Type heading or its aliases.
+    - If no match is found, use "unspecified" and push the text to the remarks field.
+4. Within that type-specific context, extract the following characteristics:
+    - variety
+    - sub_variety
+    - size (also known as "maat")
+    - pieces
+    - brand (also known as "merk")
+5. Extract the following characteristics that are common across all types:
+    - package_type (also known as "verpakking")
     - pallet
-    Options: {pallets}
-    """
-    if pallet_aliases != {}:
-        prompt += f"Aliases: {pallet_aliases}\n"
-
-    prompt += f"""
-    - class
-    Options: {product_classes}
-    """
-    if product_class_aliases != {}:
-        prompt += f"Aliases: {product_class_aliases}\n"
-
-    prompt += f"""
+    - class (also known as "klasse")
     - unit_type
-    Options: {unit_types}
-    """
-    if unit_type_aliases != {}:
-        prompt += f"Aliases: {unit_type_aliases}\n"
-
-    prompt += f"""
     - unit_trade_type
+    - country (also known as "herkomst", "land" or "LvO")
+    - quantity_per_pallet (also known as "pp" or "cpp")
+    - net_weight (also known as "gewicht")
+    - price (also known as "euro")
+    - remarks
+6. Translate non-English values to English where possible.
+7. If the country value contains multiple codes (e.g. CR/BR, NL/BE/FR), split that single raw offer into separate offers — one per country code — and carry all other fields unchanged.
+8. If the size field contains multiple values (e.g. 8/9 or 5/6/7), split it into separate offers with one value per offer.
+    For example, 8/9 should yield two offers: one with size 8 and one with size 9. Always map each value separately.
+9. If a characteristic is not present in the input, set it to "unspecified".
+10. Push any text that does not match the above characteristics to the "remarks" field. This includes any residual descriptors, special mentions, certifications (unless handled via rules), or unknown attributes.
+"""
+
+    if supplier_rules:
+        prompt += "\n11. Supplier-specific rules:\n"
+        for rule in supplier_rules:
+            prompt += f"  - {rule}\n"
+
+    # Global fields
+    prompt += f"""
+---
+    
+Global Definition Block (applies to every product type):
+
+- package_type
+    Options: {package_types}
+"""
+    if package_type_aliases:
+        prompt += f"    Aliases: {package_type_aliases}\n"
+
+    prompt += f"""
+- pallet
+    Options: {pallets}
+"""
+    if pallet_aliases:
+        prompt += f"    Aliases: {pallet_aliases}\n"
+
+    prompt += f"""
+- class
+    Options: {product_classes}
+"""
+    if product_class_aliases:
+        prompt += f"    Aliases: {product_class_aliases}\n"
+
+    prompt += f"""
+- unit_type
+    Options: {unit_types}
+"""
+    if unit_type_aliases:
+        prompt += f"    Aliases: {unit_type_aliases}\n"
+
+    prompt += f"""
+- unit_trade_type
     Options: {unit_trade_types}
-    """
-    if unit_trade_type_aliases != {}:
-        prompt += f"Aliases: {unit_trade_type_aliases}\n"
+"""
+    if unit_trade_type_aliases:
+        prompt += f"    Aliases: {unit_trade_type_aliases}\n"
 
     prompt += f"""
-    - country
+- country
     Options: {countries}
-    """
-    if country_aliases != {}:
-        prompt += f"Aliases: {country_aliases}\n"
+"""
+    if country_aliases:
+        prompt += f"    Aliases: {country_aliases}\n"
 
-    prompt += f"""
-    - quantity_per_pallet: A positive integer representing the number of items per pallet. If missing, set to 0.
+    prompt += """
+- quantity_per_pallet: A positive integer representing the number of items per pallet. If missing, set to 0.
+- net_weight: Numeric. If in grams, convert to kilograms. If no weight is specified, set to 0.
+- price: Numeric. If no price is specified, set to 0. If the price is specified as any variation of "exp", "p.o.r.", "POR", "n.a.", or "POA", set to 0.
+- remarks: Free text of anything unmatched.
 
-    - net_weight: Numeric. If in grams, convert to kilograms. If no weight is specified, set to 0.
+---
 
-    - price: Numeric. If no price is specified, set to 0. If the price is specified as "exp", "p.o.r.", "e.x.p.", "o.a.", "POR", "n.a.", "POA", "p.o.a", or "P.O.R.", set to 0.
+The following sections define allowed values per product_type. Only extract values listed below for each respective product_type.
+"""
 
-    - remarks: Free text of anything unmatched.
+    # Product-type-specific definitions
+    for product_type in relevant_product_types:
+        prompt += f"\n### product_type: {product_type}\n"
+        if product_type in product_type_aliases:
+            prompt += f"  Aliases: {product_type_aliases[product_type]}\n"
 
-    """
-
-    for relevant_product_type in relevant_product_types:
-        prompt += f"\n### product_type: {relevant_product_type}\n"
-        if relevant_product_type in product_type_aliases:
-            prompt += f"Aliases: {product_type_aliases[relevant_product_type]}\n"
-        # TO DO: Add rules for product types
         prompt += f"\n- Variety options: {varieties}\n"
-        if variety_aliases != {}:
+        if variety_aliases:
             prompt += f"  Variety aliases: {variety_aliases}\n"
-        if variety_subvariety_dict != {}:
-            prompt += f"\n- Sub-variety options per variety: {variety_subvariety_dict}\n"
-        if subvariety_aliases != {}:
-            prompt += f"  Sub-variety aliases: {subvariety_aliases}\n"
-        prompt += f"\n- Size options: {sizes}\n"
-        if size_aliases != {}:
-            prompt += f"  Size aliases: {size_aliases}\n"
-        prompt += f"\n- Pieces options: {pieces}\n"
-        if piece_aliases != {}:
-            prompt += f"  Pieces aliases: {piece_aliases}\n"
-        prompt += f"\n- Brand options: {brands}\n"
-        if brand_aliases != {}:
-            prompt += f"  Brand aliases: {brand_aliases}\n\n"
 
+        if variety_subvariety_dict:
+            prompt += f"\n- Sub-variety options per variety: {variety_subvariety_dict}\n"
+        if subvariety_aliases:
+            prompt += f"  Sub-variety aliases: {subvariety_aliases}\n"
+
+        prompt += f"\n- Size options: {sizes}\n"
+        if size_aliases:
+            prompt += f"  Size aliases: {size_aliases}\n"
+
+        prompt += f"\n- Pieces options: {pieces}\n"
+        if piece_aliases:
+            prompt += f"  Pieces aliases: {piece_aliases}\n"
+
+        prompt += f"\n- Brand options: {brands}\n"
+        if brand_aliases:
+            prompt += f"  Brand aliases: {brand_aliases}\n"
+        prompt += "\n"
     return prompt
 
 
 
-def build_prompt(input):
+def build_prompt(input, batch_id):
     supplier_id = input["supplier_id"].values[0]
     # Load the target output from the labeled data CSV
     if not os.path.exists(labeled_data_path):
@@ -452,7 +484,7 @@ def build_prompt(input):
     pallets, pallet_aliases = retrieve_pallets()
     unit_types, unit_type_aliases = retrieve_unit_types()
     unit_trade_types, unit_trade_type_aliases = retrieve_unit_trade_types()
-    product_type_ids =  retrieve_product_types(relevant_product_types=relevant_product_types)
+    product_type_ids =  retrieve_product_types(relevant_product_types=relevant_product_types, batch_id=batch_id, input_id=input["id"].values[0].item())
     for product_type_id, product_type_name in product_type_ids.items():
         product_type_aliases, varieties, variety_aliases, subvarieties, subvariety_aliases, variety_subvariety_dict, sizes, size_aliases, brands, brand_aliases, pieces, piece_aliases = retrieve_product_info(product_type_id, product_type_name, product_type_id)
 
