@@ -10,7 +10,7 @@ FROM
     public.results AS results
     LEFT JOIN public.runs AS runs ON results.run_id = runs.id
     LEFT JOIN public.inputs AS inputs ON runs.input_id = inputs.id
-WHERE runs.batch_id = '20250609191603'  -- Filter for a specific batch
+WHERE runs.batch_id = '20250617153247'  -- Filter for a specific batch
 GROUP BY
     runs.batch_id,
     results.attribute

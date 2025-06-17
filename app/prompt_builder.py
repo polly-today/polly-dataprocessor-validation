@@ -340,15 +340,15 @@ def write_prompt(
     """
 
     prompt = """
-You are an expert data extractor. Your task is to extract detailed characteristics from the provided text and output them in a structured JSON format.
+You are the best data extractor in the world. Your task is to extract specific characteristics from the following text as a table with a row with the characteristics for each offer. 
 
 Extraction Instructions:
 
 1. Loop over each offer in the input (i.e. any distinct product entry, typically separated by line breaks, bullet points, or identifiable product blocks) and produce one object per offer in the JSON output.
-2. Replace any alias with its canonical value.
+2. Consider aliases for mapping purposes.
 3. Detect product_type:
-    - Match against a ### Product Type heading or its aliases.
-    - If no match is found, use "unspecified" and push the text to the remarks field.
+    - Match against a ### product_type heading or its aliases.
+    - If no match is found, use "unspecified" for product_type and push the text to the remarks field.
 4. Within that type-specific context, extract the following characteristics:
     - variety
     - sub_variety
@@ -367,8 +367,9 @@ Extraction Instructions:
     - price (also known as "euro")
     - remarks
 6. Translate non-English values to English where possible.
-7. If the country value contains multiple codes (e.g. CR/BR, NL/BE/FR), split that single raw offer into separate offers — one per country code — and carry all other fields unchanged.
-8. If the size field contains multiple values (e.g. 8/9 or 5/6/7), split it into separate offers with one value per offer.
+7. Extract all offers, even if there is no price.
+8. If the country value contains multiple codes (e.g. CR/BR, NL/BE/FR), split that single raw offer into separate offers — one per country code — and carry all other fields unchanged.
+9. If the size field contains multiple values (e.g. 8/9 or 5/6/7), split it into separate offers with one value per offer.
     For example, 8/9 should yield two offers: one with size 8 and one with size 9. Always map each value separately.
 9. If a characteristic is not present in the input, set it to "unspecified".
 10. Push any text that does not match the above characteristics to the "remarks" field. This includes any residual descriptors, special mentions, certifications (unless handled via rules), or unknown attributes.
@@ -436,46 +437,48 @@ Global Definition Block (applies to every product type):
 
 The following sections define allowed values per product_type. Only extract values listed below for each respective product_type.
 """
-
-    # Product-type-specific definitions
     for product_type in relevant_product_types:
         prompt += f"\n### product_type: {product_type}\n"
+
         if product_type in product_type_aliases:
-            prompt += f"  Aliases: {product_type_aliases[product_type]}\n"
+            aliases_dict = product_type_aliases[product_type]
+            if aliases_dict and len(aliases_dict) > 0:
+                aliases_list = next(iter(aliases_dict.values()))
+                prompt += f"- product_type aliases: {aliases_list}\n"
 
-        prompt += f"\n- Variety options: {varieties}\n"
-        if variety_aliases:
-            prompt += f"  Variety aliases: {variety_aliases}\n"
+        prompt += f"\n- variety\n\tOptions: {varieties[product_type]}\n"
+        if variety_aliases.get(product_type):
+            prompt += f"\tAliases: {variety_aliases[product_type]}\n"
+        
+        if variety_subvariety_dict.get(product_type):
+            prompt += f"\n- sub_variety\n\tOptions per variety: {variety_subvariety_dict[product_type]}\n"
+        if subvariety_aliases.get(product_type):
+            prompt += f"\tAliases: {subvariety_aliases[product_type]}\n"
 
-        if variety_subvariety_dict:
-            prompt += f"\n- Sub-variety options per variety: {variety_subvariety_dict}\n"
-        if subvariety_aliases:
-            prompt += f"  Sub-variety aliases: {subvariety_aliases}\n"
+        prompt += f"\n- size\n\tOptions: {sizes[product_type]}\n"
+        if size_aliases.get(product_type):
+            prompt += f"\tAliases: {size_aliases[product_type]}\n"
 
-        prompt += f"\n- Size options: {sizes}\n"
-        if size_aliases:
-            prompt += f"  Size aliases: {size_aliases}\n"
+        prompt += f"\n- pieces\n\tOptions: {pieces[product_type]}\n"
+        if piece_aliases.get(product_type):
+            prompt += f"\tAliases: {piece_aliases[product_type]}\n"
 
-        prompt += f"\n- Pieces options: {pieces}\n"
-        if piece_aliases:
-            prompt += f"  Pieces aliases: {piece_aliases}\n"
+        prompt += f"\n- brand\n\tOptions: {brands[product_type]}\n"
+        if brand_aliases.get(product_type):
+            prompt += f"\tAliases: {brand_aliases[product_type]}\n"
 
-        prompt += f"\n- Brand options: {brands}\n"
-        if brand_aliases:
-            prompt += f"  Brand aliases: {brand_aliases}\n"
         prompt += "\n"
-    return prompt
 
+    return prompt
 
 
 def build_prompt(input, batch_id):
     supplier_id = input["supplier_id"].values[0]
+
     # Load the target output from the labeled data CSV
     if not os.path.exists(labeled_data_path):
         raise FileNotFoundError(f"Labeled data file not found: {labeled_data_path}")
     target_output_df = load_csv(labeled_data_path)
-    supplier_id = '41420926-6295-4ac8-8640-e6d29f54185b'
-    
     relevant_product_types = get_relevant_product_types(input, target_output_df)
     supplier_rules = retrieve_supplier_rules(supplier_id)
     package_types, package_type_aliases = retrieve_package_types(supplier_id)
@@ -484,20 +487,48 @@ def build_prompt(input, batch_id):
     pallets, pallet_aliases = retrieve_pallets()
     unit_types, unit_type_aliases = retrieve_unit_types()
     unit_trade_types, unit_trade_type_aliases = retrieve_unit_trade_types()
-    product_type_ids =  retrieve_product_types(relevant_product_types=relevant_product_types, batch_id=batch_id, input_id=input["id"].values[0].item())
+    product_type_ids = retrieve_product_types(relevant_product_types=relevant_product_types, batch_id=batch_id, input_id=input["id"].values[0].item())
+
+    # initialize dicts
+    product_type_aliases_dict = {}
+    varieties_dict = {}
+    variety_aliases_dict = {}
+    subvarieties_dict = {}
+    subvariety_aliases_dict = {}
+    variety_subvariety_dict_dict = {}
+    sizes_dict = {}
+    size_aliases_dict = {}
+    brands_dict = {}
+    brand_aliases_dict = {}
+    pieces_dict = {}
+    piece_aliases_dict = {}
+
+    # collect per product_type
     for product_type_id, product_type_name in product_type_ids.items():
         product_type_aliases, varieties, variety_aliases, subvarieties, subvariety_aliases, variety_subvariety_dict, sizes, size_aliases, brands, brand_aliases, pieces, piece_aliases = retrieve_product_info(product_type_id, product_type_name, product_type_id)
 
+        product_type_aliases_dict[product_type_name] = product_type_aliases
+        varieties_dict[product_type_name] = varieties
+        variety_aliases_dict[product_type_name] = variety_aliases
+        subvarieties_dict[product_type_name] = subvarieties
+        subvariety_aliases_dict[product_type_name] = subvariety_aliases
+        variety_subvariety_dict_dict[product_type_name] = variety_subvariety_dict
+        sizes_dict[product_type_name] = sizes
+        size_aliases_dict[product_type_name] = size_aliases
+        brands_dict[product_type_name] = brands
+        brand_aliases_dict[product_type_name] = brand_aliases
+        pieces_dict[product_type_name] = pieces
+        piece_aliases_dict[product_type_name] = piece_aliases
 
     prompt = write_prompt(
-        relevant_product_types=relevant_product_types,
-        product_type_aliases=product_type_aliases,
-        varieties=varieties, variety_aliases=variety_aliases,
-        subvarieties=subvarieties, subvariety_aliases=subvariety_aliases,
-        variety_subvariety_dict=variety_subvariety_dict,
-        sizes=sizes, size_aliases=size_aliases,
-        brands=brands, brand_aliases=brand_aliases,
-        pieces=pieces, piece_aliases=piece_aliases,
+        relevant_product_types=set(product_type_ids.values()),
+        product_type_aliases=product_type_aliases_dict,
+        varieties=varieties_dict, variety_aliases=variety_aliases_dict,
+        subvarieties=subvarieties_dict, subvariety_aliases=subvariety_aliases_dict,
+        variety_subvariety_dict=variety_subvariety_dict_dict,
+        sizes=sizes_dict, size_aliases=size_aliases_dict,
+        brands=brands_dict, brand_aliases=brand_aliases_dict,
+        pieces=pieces_dict, piece_aliases=piece_aliases_dict,
         package_types=package_types, package_type_aliases=package_type_aliases,
         pallets=pallets, pallet_aliases=pallet_aliases,
         product_classes=classes, product_class_aliases=class_aliases,
@@ -508,6 +539,7 @@ def build_prompt(input, batch_id):
     )
     
     return prompt
+
 
 
 

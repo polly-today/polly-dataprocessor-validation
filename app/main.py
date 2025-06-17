@@ -2,6 +2,7 @@ import pandas as pd
 import uuid
 import json
 import asyncio
+from openai import APIConnectionError, APIError, RateLimitError, BadRequestError
 from llm_data_extractor import get_chat_gpt_response
 from utils import get_args, load_prompt, load_inputs, insert_run, update_run, dispose_engine, update_results
 from comparator import compare_llm_to_target_output
@@ -110,14 +111,18 @@ async def main():
             # If we got a valid response, mark this run completed
             update_run(batch_id, input_id, status="completed", llm_output=json.dumps(response), error_message=None, system_prompt=system_prompt)
 
-        except Exception as e:
-            # Something went wrong in the LLM call or post‐processing:
-            print(f"Error processing input {input_id}: {e}")
-            # Mark the most‐recent run for this input_id as 'failed'
-            update_run(batch_id, input_id, status="failed", llm_output=None, error_message=str(e), system_prompt=system_prompt)
-            # And move on to the next input_id
+        except APIConnectionError as e:
+            print("Connection error occurred")
+            update_run(batch_id, input_id, status="failed", llm_output=None, error_message="Connection error", system_prompt=system_prompt)
             continue
-
+        except APIError as e:
+            print("OpenAI server-side error:", e)
+            update_run(batch_id, input_id, status="failed", llm_output=None, error_message=str(e), system_prompt=system_prompt)
+            continue
+        except Exception as e:
+            print("Unexpected error:", e)
+            update_run(batch_id, input_id, status="failed", llm_output=None, error_message=str(e), system_prompt=system_prompt)
+            continue
 
         # Compare the LLM output to the target output
         print(f"Comparing LLM output to target output for input ID {input_id}...")
