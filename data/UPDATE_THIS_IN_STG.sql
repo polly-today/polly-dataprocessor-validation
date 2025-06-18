@@ -28,7 +28,30 @@ values
 ('6e416f61-054a-4847-911e-fe9fed6306d0', 'unspecified', (select id from product_types where name = 'Classic Tomato Mix'), now(), now()),
 ('782bc741-2e3a-4a1a-ac8e-2f406e78b69a', 'unspecified', (select id from product_types where name = 'Cherry Plum Vine Tomato'), now(), now()),
 ('5d9808de-bda5-4f87-a1ef-8b2ccc54610d', 'Round Mix', (select id from product_types where name = 'Zucchini'), now(), now());
-
+insert into public.product_sub_varieties
+(id, name, variety_id, created_at, updated_at)
+values
+('d4e4109f-cd96-466e-b740-e13d98293fd8', 'unspecified', '6e416f61-054a-4847-911e-fe9fed6306d0', now(), now()),
+('6556e4e3-133e-456d-bf29-e147ed5347c1', 'unspecified', '782bc741-2e3a-4a1a-ac8e-2f406e78b69a', now(), now()),
+('21a7a6b8-a3d7-4e74-b23b-f89e6f92a996', 'unspecified', '5d9808de-bda5-4f87-a1ef-8b2ccc54610d', now(), now());
+-- Add pieces relationships for the new product types
+insert into public.product_type_pieces
+(id, product_type_id, piece_id)
+values
+('4e45db4a-3124-4e1b-aeb9-2b9bc7153a3d', '85cfea73-513e-4d2e-b2ac-ed2154468695', (select id from pieces where name = 'unspecified')),
+('5d6906ff-d41c-40a2-9759-81aba1434e17', '3ddd2ea4-5f0f-47de-8a70-2cd1ddf409b1', (select id from pieces where name = 'unspecified'));
+-- Add sizes relationships for the new product types
+insert into public.product_type_sizes
+(id, product_type_id, size_id)
+values
+('82e079c4-3e51-4b5a-bfb1-63ece40e3f73', '85cfea73-513e-4d2e-b2ac-ed2154468695', (select id from sizes where name = 'unspecified')),
+('ab28a224-f6b6-4630-bf5b-72b5f3d3b476', '3ddd2ea4-5f0f-47de-8a70-2cd1ddf409b1', (select id from sizes where name = 'unspecified'));
+-- Add brand relationships for the new product types
+insert into public.product_type_brands
+(id, product_type_id, brand_id)
+values
+('14846d0b-8657-4a76-a1c7-ccd431004a9a', '85cfea73-513e-4d2e-b2ac-ed2154468695', (select id from brands where name = 'unspecified')),
+('29bbd857-3512-4bc0-8748-baa138ba72e9', '3ddd2ea4-5f0f-47de-8a70-2cd1ddf409b1', (select id from brands where name = 'unspecified'));
 
 -- Insert sizes
 insert into public.sizes
@@ -259,7 +282,7 @@ values
 select * from product_type_pieces
 left join product_types on product_types.id = product_type_pieces.product_type_id
 left join pieces on pieces.id = product_type_pieces.piece_id
-where product_types.name = 'Broccoli'
+--where product_types.name = 'Broccoli'
 
 select * from product_type_sizes
 left join product_types on product_types.id = product_type_sizes.product_type_id

@@ -247,9 +247,7 @@ def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
         result = conn.execute(query, {"product_type_id": product_type_id})
         rows = result.fetchall()
         varieties = {row[0]: row[1] for row in rows if row[0] is not None}
-        #print(f"Varieties retrieved: {varieties.values()}")
         subvarieties = {row[2]: row[3] for row in rows if row[2] is not None}
-        #print(f"Sub-varieties retrieved: {subvarieties.values()}")
         # Create a dictionary to hold the relations between varieties and sub-varieties
         variety_subvariety_dict = {}
         for row in rows:
