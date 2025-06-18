@@ -12,6 +12,23 @@ delete from product_type_sizes where size_id = 'ae3de7a8-fc5a-44e1-96cc-e8bf0d47
 delete from public.product_attributes_value_aliases where id in ('d35014b0-5fc7-455e-a30f-5f595f24bfb7');
 DELETE FROM public.sizes WHERE id IN ('ae3de7a8-fc5a-44e1-96cc-e8bf0d474071');
 delete from public.product_type_sizes where id = 'd0eeedb1-140a-48d7-9940-bdd77fd06726';
+delete from supplier_rules where id in ('73252ba9-e73e-4e6d-9a77-240035a65a98', 'f4d468b2-2ddd-4225-aab0-49c19025708d', '96a47ff9-eb15-4276-a280-a9984f85de9a');
+
+select * from product_types
+
+-- Insert new product types and varieties
+insert into public.product_types
+(id, name, group_id)
+values
+('85cfea73-513e-4d2e-b2ac-ed2154468695', 'Classic Tomato Mix', '2e8f1f6f-2f34-466d-82bf-803de8eb1ceb'),
+('3ddd2ea4-5f0f-47de-8a70-2cd1ddf409b1', 'Cherry Plum Vine Tomato', '2e8f1f6f-2f34-466d-82bf-803de8eb1ceb');
+insert into public.product_varieties
+(id, name, type_id, created_at, updated_at)
+values
+('6e416f61-054a-4847-911e-fe9fed6306d0', 'unspecified', (select id from product_types where name = 'Classic Tomato Mix'), now(), now()),
+('782bc741-2e3a-4a1a-ac8e-2f406e78b69a', 'unspecified', (select id from product_types where name = 'Cherry Plum Vine Tomato'), now(), now()),
+('5d9808de-bda5-4f87-a1ef-8b2ccc54610d', 'Round Mix', (select id from product_types where name = 'Zucchini'), now(), now());
+
 
 -- Insert sizes
 insert into public.sizes
@@ -31,11 +48,19 @@ values
 ('b34ef4f7-3923-41cc-a226-b6105924295c', '12x100g', now(), now()),
 ('b6f7d6cd-eb68-40dc-8fc6-c3c46276a556', '24x250g', now(), now());
 
--- Insert product type rules
+-- Add product type rules
+select * from product_type_rules;
 insert into public.product_type_rules 
 (id, type_id, rule)
 values
-('2061a06b-9f4b-4dac-819d-3127e68f94e6', '5f7d5346-5c7f-449f-83da-47117b7d2336', 'For "Cucumber", the default variety is "Naked" if no other value is provided. If the value is "Cucumber", it should be considered as "Naked".');
+('99134496-bdbd-4df5-9f66-fc13012288d6', 'b0582ea7-b613-4ab2-85f8-5847525ef0b7', 'If the input only mentions "Cherry" without any additional descriptors (e.g., "plum", "vine", "plum vine"), assign product_type = "Cherry Tomato".'),
+('b0582ea7-b613-4ab2-85f8-5847525ef0b7', 'b0582ea7-b613-4ab2-85f8-5847525ef0b7', 'For "Cherry Tomato", if pieces are specified in the format of multiple units of 250g (e.g., "9x250g", "8x250g", etc.), and the variety does not already include a specific form (e.g., Triangle, Shaker, etc.), default to a "Punnet" variety. Combine the inferred color (Red, Yellow, Mix — defaulting to Red if unspecified) with the form "Punnet" to assign the correct variety (e.g. "9x250g" → "Red Punnet", "8x250g Mix" → "Mix Punnet").'),
+('db021c14-8614-4555-9fe6-36cf1920478f', 'de6d3dbe-8037-41a7-87c3-f7ce56f6f47e', 'For "Cherry Plum Tomato", if pieces are specified in the format of multiple units of 500g and the variety does not already indicate a specific packaging form (e.g., Flowpack, Punnet, etc.), default to a "Bucket" variety. Combine the inferred color (Red, Yellow, Mix — defaulting to Red if unspecified) with the form "Bucket" to assign the correct variety (e.g. "10x500g" → "Red Bucket", "8x500g Mix" → "Mix Bucket").'),
+('927a0918-db6b-4a30-8695-676be9a08414', 'e8bb2819-5c18-4751-9502-9e9fc4843476', 'For "Cauliflower", if no variety or product-level packaging (e.g., filmed/naked) is mentioned, default to "White Naked". If the input mentions product-level film packaging (e.g., "foly", "filmed") and no color or variety is specified, assign variety = "White Filmed". If a color or type is explicitly mentioned (e.g., "Purple", "Orange", "Romanesco"), use that as the variety without appending any packaging descriptors — even if filmed is mentioned.'),
+('6e0a1341-baef-4128-ab4f-397f32b64eae', 'db2a67da-ffbc-4cb8-83ea-423d8684b44f', 'For "Broccoli", the defaults are "Naked" and "Green". Use these defaults to select the most specific matching variety from the allowed options (e.g., "Broccoli filmed" → "Green Filmed", "Broccoli purple" → "Purple Naked").'),
+('76663c21-0e82-4139-8fc8-ae3219eddff7', 'b3e3e08e-19db-4bcb-b604-f9d5bf6b8ab1', 'For "Zucchini", If no color or shape is explicitly mentioned in the input, default to variety = "Green". Only extract other varieties (e.g., "White", "Yellow", "Round Green", "Round Yellow") when they are explicitly stated in the text.'),
+('2061a06b-9f4b-4dac-819d-3127e68f94e6', '5f7d5346-5c7f-449f-83da-47117b7d2336', 'For "Cucumber", the default variety is "Naked" if no other value is provided. If the value is "Cucumber", it should be considered as "Naked".'),
+
 
 -- Add aliases for Pointed pepper
 INSERT INTO public.product_attributes_value_aliases
@@ -225,3 +250,18 @@ insert into public.product_type_sizes
 values
 ('be13a0ec-33a2-4ef0-a8d8-e922c05fd662', '1a8dd712-7bf2-44d3-aeda-d354e5e1c3d6', (select id from sizes where name = '25-30'));
 
+-- Add supplier rules for Fossa Eugenia
+insert into public.supplier_rules
+(id, supplier_id, rule)
+values
+('1e996769-d63f-44c8-9020-25d2a40fa485', '41420926-6295-4ac8-8640-e6d29f54185b', 'If multiple values for pieces are written in the form "X of Y stuks" (e.g., "12 of 15 stuks"), treat these as separate values and split into two separate offers: one with pieces = "12stk" and one with pieces = "15stk". However, if the input uses a range format such as "12-15 stuks", interpret this as a single range value and do not split into 2 offers: pieces = "12-15stk".');
+
+select * from product_type_pieces
+left join product_types on product_types.id = product_type_pieces.product_type_id
+left join pieces on pieces.id = product_type_pieces.piece_id
+where product_types.name = 'Broccoli'
+
+select * from product_type_sizes
+left join product_types on product_types.id = product_type_sizes.product_type_id
+left join sizes on sizes.id = product_type_sizes.size_id
+where product_types.name = 'Pointed Cabbage Green'

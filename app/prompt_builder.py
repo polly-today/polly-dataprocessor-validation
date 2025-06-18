@@ -377,14 +377,14 @@ Extraction Instructions:
 6. Translate non-English values to English where possible.
 7. Extract all offers, even if there is no price.
 8. If the country value contains multiple codes (e.g. CR/BR, NL/BE/FR), split that single raw offer into separate offers — one per country code — and carry all other fields unchanged.
-9. If the size field contains multiple values (e.g. 8/9 or 5/6/7), split it into separate offers with one value per offer.
-    For example, 8/9 should yield two offers: one with size 8 and one with size 9. Always map each value separately.
-9. If a characteristic is not present in the input, set it to "unspecified".
-10. Push any text that does not match the above characteristics to the "remarks" field. This includes any residual descriptors, special mentions, certifications (unless handled via rules), or unknown attributes.
+9. If the size field contains multiple values (e.g. 8/9, 5/6/7, "kort/lang", "middel/grof"), split it into separate offers with one value per offer.
+    For example, 8/9 should yield two offers: one with size 8 and one with size 9. Similarly, "kort/lang" should yield two offers: one with size "Short" and one with size "Long". Always map each value separately.
+10. If an ETA (Estimated Time of Arrival) is given for an offer, set the price to 0 and add the ETA information to the remarks field.
+11. Push any text that does not match the above characteristics to the "remarks" field. This includes any residual descriptors, ETA's, special mentions, certifications (such as BIO, ECO, Organic), or unknown attributes, unless handled via rules.
 """
 
     if supplier_rules:
-        prompt += "\n11. Supplier-specific rules:\n"
+        prompt += "12. Supplier-specific rules:\n"
         for rule in supplier_rules:
             prompt += f"  - {rule}\n"
 
@@ -436,9 +436,9 @@ Global Definition Block (applies to every product type):
         prompt += f"    Aliases: {country_aliases}\n"
 
     prompt += """
-- quantity_per_pallet: A positive integer representing the number of items per pallet. If missing, set to 0.
-- net_weight: Numeric. If in grams, convert to kilograms. If no weight is specified, set to 0.
-- price: Numeric. If no price is specified, set to 0. If the price is specified as any variation of "exp", "p.o.r.", "POR", "n.a.", or "POA", set to 0.
+- quantity_per_pallet: A positive integer representing the number of items per pallet. If missing, leave it empty.
+- net_weight: A numeric value in kilograms (kg). If the value is given in grams (e.g., 500g), convert it to kilograms (e.g., 0.5). If weight appears as part of the product line (e.g., "Plum tomatoes 6kg"), extract "6" as net_weight. If no weight is specified, leave net_weight empty. You may infer net_weight from pieces when both components are clearly present: a piece count and a weight per piece (e.g., if pieces = "10x1kg", then net_weight = 10). However, do not infer a piece-based quantity (e.g., "10x1kg") from standalone weight expressions like "10kg" — treat such cases as direct net_weight values.
+- price: Numeric. If no price is specified, set to 0, thus not empty. If the price is specified as any variation of "exp", "p.o.r.", "POR", "n.a.", "Prijs op aanvraag", "2e Prijslijst", or "POA", set to 0.
 - remarks: Free text of anything unmatched.
 
 ---
