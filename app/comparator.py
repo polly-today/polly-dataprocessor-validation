@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import openai
+from zoneinfo import ZoneInfo
 from Levenshtein import ratio as levenshtein_ratio
 import pandas as pd
 from utils import load_csv, load_inputs
@@ -79,6 +80,15 @@ def preprocess_data(llm_output_df, target_output_df):
         format="%d-%m-%Y %H:%M:%S",  # or omit format and use dayfirst=True
         errors="coerce"
     )
+
+    # Convert phone_number to string and remove trailing .0 if present
+    target_output_df["phone_number"] = (
+        target_output_df["phone_number"]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.strip()
+    )
+
     return llm_output_df, target_output_df
 
 
@@ -271,7 +281,11 @@ def compare_llm_to_target_output(input, response):
     email_subject = input["email_subject"].values[0]
 
     # Ensure date_of_sending is a datetime object and in the correct time zone
-    date_of_sending = pd.to_datetime(date_of_sending, errors="coerce") + pd.Timedelta(hours=1)
+    #date_of_sending = pd.to_datetime(date_of_sending, errors="coerce") + pd.Timedelta(hours=1)
+    date_of_sending = pd.to_datetime(date_of_sending, utc=True)\
+                    .tz_convert(ZoneInfo("Europe/Amsterdam"))\
+                    .replace(tzinfo=None)
+
 
     # ───── Parse the JSON‐string into a Python object ─────────────────────────────
     if isinstance(response, str):
@@ -297,12 +311,25 @@ def compare_llm_to_target_output(input, response):
     llm_output_df, target_output_df = preprocess_data(llm_output_df, target_output_df)
 
     # Get rows from target_output where supplier_name, date_of_sending, email_adress, phone_number, email_subject match the input_id
-    relevant_target_rows = target_output_df[
-        (target_output_df["supplier_name"] == supplier_name) &
-        (target_output_df["date_of_sending"] == date_of_sending) &
-        ((target_output_df["email_address"] == email_adress) | (target_output_df["phone_number"] == phone_number)) &
-        (target_output_df["email_subject"] == email_subject)
-    ]
+    if input["source_type"].values[0] == "Email":
+        # For emails, match on email_address and phone_number
+        relevant_target_rows = target_output_df[
+            (target_output_df["supplier_name"] == supplier_name) &
+            (target_output_df["date_of_sending"] == date_of_sending) &
+            ((target_output_df["email_address"] == email_adress) | (target_output_df["phone_number"] == phone_number)) &
+            (target_output_df["email_subject"] == email_subject)
+        ]
+    elif input["source_type"].values[0] == "WhatsApp":
+        # For WhatsApp, match on phone_number only
+        relevant_target_rows = target_output_df[
+            (target_output_df["supplier_name"] == supplier_name) &
+            (target_output_df["date_of_sending"] == date_of_sending) &
+            (target_output_df["phone_number"] == phone_number)
+        ]
+    else: 
+        # Source type is not recognized, raise an error
+        raise ValueError(f"Unrecognized source_type: {input['source_type'].values[0]}. Expected 'Email' or 'WhatsApp'.")
+
     
     # If no matching rows are found, raise an error
     if relevant_target_rows.empty:

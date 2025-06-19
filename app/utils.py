@@ -26,7 +26,6 @@ def load_inputs():
     # Run the query and load into a DataFrame
     try:
         df = pd.read_sql(query, con=engine)
-        print(df)
         return df
     except Exception as e:
         print("Error loading inputs from database:", e)
@@ -136,7 +135,9 @@ def load_csv(file_path):
     #print(f"Loading {file_path}...")
     if os.path.exists(file_path):
         df = pd.read_csv(file_path)
-        #print(f"Loaded {file_path} with shape: {df.shape}")
+        if file_path == "../data/labeled_data.csv":
+            df['phone_number'] = df['phone_number'].astype(str)  # Ensure phone numbers are strings
+
         return df
     else:
         raise FileNotFoundError(f"{file_path} not found")

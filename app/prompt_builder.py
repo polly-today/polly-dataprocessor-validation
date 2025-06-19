@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
 from sqlalchemy import create_engine, text
 from utils import (load_csv)
 from config import (
@@ -35,8 +36,10 @@ def get_relevant_product_types(input, target_output_df):
     phone_number = input["phone_number"].values[0]
     email_subject = input["email_subject"].values[0]
 
-    # Ensure date_of_sending is a datetime object and in the correct time zone
-    date_of_sending = pd.to_datetime(date_of_sending, errors="coerce") + pd.Timedelta(hours=1)
+    date_of_sending = pd.to_datetime(date_of_sending, utc=True)\
+                        .tz_convert(ZoneInfo("Europe/Amsterdam"))\
+                        .replace(tzinfo=None)
+    
     # Check if supplier_name, date_of_sending, email_adress, phone_number, email_subject are columns in the DataFrame
     if not all(col in target_output_df.columns for col in ["supplier_name", "date_of_sending", "email_address", "phone_number", "email_subject", "product_type"]):
         raise ValueError(f"Missing columns in target_output_df: {set(['supplier_name', 'date_of_sending', 'email_address', 'phone_number', 'email_subject', 'product_type']).difference(target_output_df.columns)}")
@@ -47,13 +50,33 @@ def get_relevant_product_types(input, target_output_df):
         errors="coerce"
     )
 
+    # Convert phone_number to string and remove trailing .0 if present
+    target_output_df["phone_number"] = (
+        target_output_df["phone_number"]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.strip()
+    )    
+
     # Get rows from target_output where supplier_name, date_of_sending, email_adress, phone_number, email_subject match the input_id
-    relevant_target_rows = target_output_df[
-        (target_output_df["supplier_name"] == supplier_name) &
-        (target_output_df["date_of_sending"] == date_of_sending) &
-        ((target_output_df["email_address"] == email_adress) | (target_output_df["phone_number"] == phone_number)) &
-        (target_output_df["email_subject"] == email_subject)
-    ]
+    if input["source_type"].values[0] == "Email":
+        # For emails, match on email_address and phone_number
+        relevant_target_rows = target_output_df[
+            (target_output_df["supplier_name"] == supplier_name) &
+            (target_output_df["date_of_sending"] == date_of_sending) &
+            ((target_output_df["email_address"] == email_adress) | (target_output_df["phone_number"] == phone_number)) &
+            (target_output_df["email_subject"] == email_subject)
+        ]
+    elif input["source_type"].values[0] == "WhatsApp":
+        # For WhatsApp, match on phone_number only
+        relevant_target_rows = target_output_df[
+            (target_output_df["supplier_name"] == supplier_name) &
+            (target_output_df["date_of_sending"] == date_of_sending) &
+            (target_output_df["phone_number"] == phone_number)
+        ]
+    else: 
+        # Source type is not recognized, raise an error
+        raise ValueError(f"Unrecognized source_type: {input['source_type'].values[0]}. Expected 'Email' or 'WhatsApp'.")
 
     # Get all product types from the relevant target rows and convert to a set
     if relevant_target_rows.empty:
