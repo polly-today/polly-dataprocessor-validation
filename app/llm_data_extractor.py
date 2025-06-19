@@ -62,17 +62,20 @@ async def get_chat_gpt_response(
             print(f"Processing page {page} of {total_pages}...")
             prompt = f"Please extract the text from page {page} of {total_pages} and return only valid JSON matching the schema."
             
-            chat_response = await client.beta.chat.completions.parse(
-                model=model,
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": content},
-                    {"role": "user",   "content": prompt}
-                ],
-                temperature=0,
-                response_format=response_format
-            )
-            print(f"Response for page {page}: {chat_response.choices[0].message.content}")
+            try:
+                chat_response = await client.beta.chat.completions.parse(
+                    model=model,
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user",   "content": content},
+                        {"role": "user",   "content": prompt}
+                    ],
+                    temperature=0,
+                    response_format=response_format
+                )
+            except Exception as e:
+                print(f"Error processing page {page}: {e}")
+                continue
 
             # Parse page response
             if isinstance(response_format, dict):
