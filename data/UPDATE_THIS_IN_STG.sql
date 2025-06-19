@@ -14,7 +14,7 @@ DELETE FROM public.sizes WHERE id IN ('ae3de7a8-fc5a-44e1-96cc-e8bf0d474071');
 delete from public.product_type_sizes where id = 'd0eeedb1-140a-48d7-9940-bdd77fd06726';
 delete from supplier_rules where id in ('73252ba9-e73e-4e6d-9a77-240035a65a98', 'f4d468b2-2ddd-4225-aab0-49c19025708d', '96a47ff9-eb15-4276-a280-a9984f85de9a');
 
-select * from product_types
+select * from product_sub_varieties
 
 -- Insert new product types and varieties
 insert into public.product_types
@@ -25,15 +25,31 @@ values
 insert into public.product_varieties
 (id, name, type_id, created_at, updated_at)
 values
+('7782a927-2e29-4661-bade-65ba1ab0aa90', 'Flower', (select id from product_types where name = 'Zucchini'), now(), now()),
+('638e2fb1-8dde-4427-8954-4936ea71d20b', 'Turkish', (select id from product_types where name = 'Aubergine'), now(), now()),
 ('6e416f61-054a-4847-911e-fe9fed6306d0', 'unspecified', (select id from product_types where name = 'Classic Tomato Mix'), now(), now()),
 ('782bc741-2e3a-4a1a-ac8e-2f406e78b69a', 'unspecified', (select id from product_types where name = 'Cherry Plum Vine Tomato'), now(), now()),
 ('5d9808de-bda5-4f87-a1ef-8b2ccc54610d', 'Round Mix', (select id from product_types where name = 'Zucchini'), now(), now());
 insert into public.product_sub_varieties
 (id, name, variety_id, created_at, updated_at)
 values
+('43c359ed-e7fe-4e56-a16f-960b2326df2f', 'unspecified', '7782a927-2e29-4661-bade-65ba1ab0aa90', now(), now()),
+('fa3f71a2-1b83-4c89-b3c3-bb46f987c50f', 'unspecified', '638e2fb1-8dde-4427-8954-4936ea71d20b', now(), now());
 ('d4e4109f-cd96-466e-b740-e13d98293fd8', 'unspecified', '6e416f61-054a-4847-911e-fe9fed6306d0', now(), now()),
 ('6556e4e3-133e-456d-bf29-e147ed5347c1', 'unspecified', '782bc741-2e3a-4a1a-ac8e-2f406e78b69a', now(), now()),
 ('21a7a6b8-a3d7-4e74-b23b-f89e6f92a996', 'unspecified', '5d9808de-bda5-4f87-a1ef-8b2ccc54610d', now(), now());
+
+-- Add Witkamp as a supplier
+insert into public.suppliers
+(code, name, created_at,  id, whatsapp_ref)
+values
+('Witkamp', 'Witkamp', now(), '59a39287-274b-4569-bed9-60811ed83b34', 43);
+insert into public.data_processors
+(id, created_at, telephone_number, source_type_id, status_id, supplier_id)
+values
+(153, now(), '31639224840', 2, 1, (select id from suppliers where name = 'Witkamp'));
+
+
 -- Add pieces relationships for the new product types
 insert into public.product_type_pieces
 (id, product_type_id, piece_id)
@@ -72,10 +88,10 @@ values
 ('b6f7d6cd-eb68-40dc-8fc6-c3c46276a556', '24x250g', now(), now());
 
 -- Add product type rules
-select * from product_type_rules;
 insert into public.product_type_rules 
 (id, type_id, rule)
 values
+('de6d3dbe-8037-41a7-87c3-f7ce56f6f47e', 'de6d3dbe-8037-41a7-87c3-f7ce56f6f47e', 'If the input only mentions "Cherry" without any additional descriptors (e.g., "plum", "vine", "plum vine"), assign product_type = "Cherry Tomato".'),
 ('99134496-bdbd-4df5-9f66-fc13012288d6', 'b0582ea7-b613-4ab2-85f8-5847525ef0b7', 'If the input only mentions "Cherry" without any additional descriptors (e.g., "plum", "vine", "plum vine"), assign product_type = "Cherry Tomato".'),
 ('b0582ea7-b613-4ab2-85f8-5847525ef0b7', 'b0582ea7-b613-4ab2-85f8-5847525ef0b7', 'For "Cherry Tomato", if pieces are specified in the format of multiple units of 250g (e.g., "9x250g", "8x250g", etc.), and the variety does not already include a specific form (e.g., Triangle, Shaker, etc.), default to a "Punnet" variety. Combine the inferred color (Red, Yellow, Mix — defaulting to Red if unspecified) with the form "Punnet" to assign the correct variety (e.g. "9x250g" → "Red Punnet", "8x250g Mix" → "Mix Punnet").'),
 ('db021c14-8614-4555-9fe6-36cf1920478f', 'de6d3dbe-8037-41a7-87c3-f7ce56f6f47e', 'For "Cherry Plum Tomato", if pieces are specified in the format of multiple units of 500g and the variety does not already indicate a specific packaging form (e.g., Flowpack, Punnet, etc.), default to a "Bucket" variety. Combine the inferred color (Red, Yellow, Mix — defaulting to Red if unspecified) with the form "Bucket" to assign the correct variety (e.g. "10x500g" → "Red Bucket", "8x500g Mix" → "Mix Bucket").'),
@@ -84,6 +100,44 @@ values
 ('76663c21-0e82-4139-8fc8-ae3219eddff7', 'b3e3e08e-19db-4bcb-b604-f9d5bf6b8ab1', 'For "Zucchini", If no color or shape is explicitly mentioned in the input, default to variety = "Green". Only extract other varieties (e.g., "White", "Yellow", "Round Green", "Round Yellow") when they are explicitly stated in the text.'),
 ('2061a06b-9f4b-4dac-819d-3127e68f94e6', '5f7d5346-5c7f-449f-83da-47117b7d2336', 'For "Cucumber", the default variety is "Naked" if no other value is provided. If the value is "Cucumber", it should be considered as "Naked".'),
 
+-- Update product type rules
+update product_type_rules
+set rule = 'For "Capsicum", the variety is by default "Naked" (i.e. not-filmed). Example: "Paprika Rood" → variety: "Red Naked". If the input specifies "Red" and includes a unit size of 500g (e.g., "10x500g", "500g verpakking"), assume the variety is "Red Flowpack" instead of "Red Naked" or "Red". If the input specifies "Mix" and includes a 500g unit, assign "Mix" as variety — do not override to any Flowpack variant, even if 500g is mentioned. Example: "Paprika Mix 10x500g" → "Mix".'
+where id = '3679c01b-d1fc-4f1e-be1f-36633b5f67d4';
+update product_type_rules
+set rule = 'For "Broccoli", the defaults are "Naked" and "Green". Use these defaults to select the most specific matching variety from the allowed options (e.g., "Broccoli filmed" → "Green Filmed", "Broccoli purple" → "Purple Naked"). If the input contains the phrase "On Ice" (e.g. "Broccoli Green On Ice"), then select the variety "On Ice", regardless of color or packaging terms. Example: "Broccoli Green On Ice" → "On Ice"'
+where id = '6e0a1341-baef-4128-ab4f-397f32b64eae'
+
+-- Add aliases for Zucchini
+select * from public.product_attributes_value_aliases 
+INSERT INTO public.product_attributes_value_aliases
+(id, alias_type_id, value_id, alias)
+values
+('422945f2-fe3a-4acf-bc91-1f43238069e2', '31ff6d01-8c05-404a-afb7-ef4a365cad61', (select id from product_varieties where name = 'Round Yellow'), 'Bol Geel');
+
+-- Update multiple aliases individually to clean up the prompt
+UPDATE public.product_attributes_value_aliases
+SET alias = CASE id
+    WHEN 'a8216fae-43ac-405c-a996-059a0d65047e' THEN 'Foly'
+    WHEN '5935322a-0972-4c09-a49f-b913ef828c7a' THEN 'Folie'
+    WHEN '55e19785-69a6-4b5a-90de-a7ee12e38f23' THEN 'Hoes'
+    WHEN '281045ce-6d26-4697-b33e-683efa8ff225' THEN 'Geseald'
+    WHEN 'c880008b-9703-4d5a-87f2-92d8b9cd79a9' THEN 'Foliert'
+    WHEN '97b5f5a7-abe6-4921-8390-6f1aba43551a' THEN 'Naakt'
+    WHEN '0813e19d-876d-4855-8b66-65b253a87404' THEN 'Nackt'
+    WHEN '0e5201f3-dc8d-44d3-b42d-dd489d4464b5' THEN 'IJs'
+    WHEN 'a512fd72-5606-4604-9429-9d7d7f5fb4db' THEN 'Long Red Pepper'
+    WHEN 'ad26e1c7-94a9-4cc1-8fc8-6c930134ffcd' THEN 'Holland'
+    WHEN '66ce1171-bb82-4b35-a84e-3342fb21dd23' THEN 'Mini Roma'
+    WHEN '4d9354be-ad87-4722-9a12-783599235380' THEN 'Snack Tomato'
+    WHEN '34e3e3ae-bcc8-4fa4-a2a0-2b26f67b218d' THEN 'Pfandkisten'
+    WHEN '00441252-866f-4c3d-b8f7-6917ab632898' THEN 'Witte Kool'
+    WHEN '9c7a2cd0-6a01-48a6-89f8-42d57cf95c5a' THEN 'Aroma Kool'
+    WHEN 'f2e9c9d2-d603-4ef7-a5fb-8d27e70f5c07' THEN 'Turkse Kool'
+    WHEN '673ca5b3-ca3e-4345-bf7e-bb95a695d565' THEN 'Doos Zonder Deksel'
+    ELSE alias
+END
+WHERE id IN ('a8216fae-43ac-405c-a996-059a0d65047e', '5935322a-0972-4c09-a49f-b913ef828c7a', '55e19785-69a6-4b5a-90de-a7ee12e38f23', '281045ce-6d26-4697-b33e-683efa8ff225', 'c880008b-9703-4d5a-87f2-92d8b9cd79a9', '97b5f5a7-abe6-4921-8390-6f1aba43551a', '0813e19d-876d-4855-8b66-65b253a87404', '0e5201f3-dc8d-44d3-b42d-dd489d4464b5', 'a512fd72-5606-4604-9429-9d7d7f5fb4db', 'ad26e1c7-94a9-4cc1-8fc8-6c930134ffcd', '66ce1171-bb82-4b35-a84e-3342fb21dd23', '4d9354be-ad87-4722-9a12-783599235380', '34e3e3ae-bcc8-4fa4-a2a0-2b26f67b218d', '00441252-866f-4c3d-b8f7-6917ab632898', '9c7a2cd0-6a01-48a6-89f8-42d57cf95c5a', 'f2e9c9d2-d603-4ef7-a5fb-8d27e70f5c07', '673ca5b3-ca3e-4345-bf7e-bb95a695d565');
 
 -- Add aliases for Pointed pepper
 INSERT INTO public.product_attributes_value_aliases
@@ -279,6 +333,9 @@ insert into public.supplier_rules
 values
 ('1e996769-d63f-44c8-9020-25d2a40fa485', '41420926-6295-4ac8-8640-e6d29f54185b', 'If multiple values for pieces are written in the form "X of Y stuks" (e.g., "12 of 15 stuks"), treat these as separate values and split into two separate offers: one with pieces = "12stk" and one with pieces = "15stk". However, if the input uses a range format such as "12-15 stuks", interpret this as a single range value and do not split into 2 offers: pieces = "12-15stk".');
 
+
+
+
 select * from product_type_pieces
 left join product_types on product_types.id = product_type_pieces.product_type_id
 left join pieces on pieces.id = product_type_pieces.piece_id
@@ -288,3 +345,11 @@ select * from product_type_sizes
 left join product_types on product_types.id = product_type_sizes.product_type_id
 left join sizes on sizes.id = product_type_sizes.size_id
 where product_types.name = 'Pointed Cabbage Green'
+
+select * from product_type_rules
+
+
+
+For "Cherry Tomato", if no color mentioned (e.g. "Red", "Yellow", "Mix"), default to "Red". Example: "Cherry Tomato Punnet" → variety: "Red Punnet".
+For "Cherry Plum Tomato", if pieces are specified in the format of multiple units of 500g and the variety does not already indicate a specific packaging form (e.g., Flowpack, Punnet, etc.), default to a "Bucket" variety. Combine the inferred color (Red, Yellow, Mix — defaulting to Red if unspecified) with the form "Bucket" to assign the correct variety (e.g. "10x500g" → "Red Bucket", "8x500g Mix" → "Mix Bucket").
+

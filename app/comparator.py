@@ -300,8 +300,7 @@ def compare_llm_to_target_output(input, response):
     relevant_target_rows = target_output_df[
         (target_output_df["supplier_name"] == supplier_name) &
         (target_output_df["date_of_sending"] == date_of_sending) &
-        (target_output_df["email_address"] == email_adress) &
-        #(target_output_df["phone_number"] == phone_number) & TO DO: be able to match phone numbers
+        ((target_output_df["email_address"] == email_adress) | (target_output_df["phone_number"] == phone_number)) &
         (target_output_df["email_subject"] == email_subject)
     ]
     

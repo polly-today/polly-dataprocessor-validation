@@ -51,8 +51,7 @@ def get_relevant_product_types(input, target_output_df):
     relevant_target_rows = target_output_df[
         (target_output_df["supplier_name"] == supplier_name) &
         (target_output_df["date_of_sending"] == date_of_sending) &
-        (target_output_df["email_address"] == email_adress) &
-        #(target_output_df["phone_number"] == phone_number) & TO DO: be able to match phone numbers
+        ((target_output_df["email_address"] == email_adress) | (target_output_df["phone_number"] == phone_number)) &
         (target_output_df["email_subject"] == email_subject)
     ]
 
@@ -435,7 +434,7 @@ Global Definition Block (applies to every product type):
 
     prompt += """
 - quantity_per_pallet: A positive integer representing the number of items per pallet. If missing, leave it empty.
-- net_weight: A numeric value in kilograms (kg). If the value is given in grams (e.g., 500g), convert it to kilograms (e.g., 0.5). If weight appears as part of the product line (e.g., "Plum tomatoes 6kg"), extract "6" as net_weight. If no weight is specified, leave net_weight empty. You may infer net_weight from pieces when both components are clearly present: a piece count and a weight per piece (e.g., if pieces = "10x1kg", then net_weight = 10). However, do not infer a piece-based quantity (e.g., "10x1kg") from standalone weight expressions like "10kg" — treat such cases as direct net_weight values.
+- net_weight: A numeric value in kilograms (kg). If the value is given in grams (e.g., 500g), convert it to kilograms (e.g., 0.5). If weight appears as part of the product line (e.g., "Plum tomatoes 6kg", "Onions 6 KG"), extract "6" as net_weight. If no weight is specified, leave net_weight empty. You may infer net_weight from pieces when both components are clearly present: a piece count and a weight per piece (e.g., if pieces = "10x1kg", then net_weight = 10). However, do not infer a piece-based quantity (e.g., "10x1kg") from standalone weight expressions like "10kg" — treat such cases as direct net_weight values.
 - price: Numeric. If no price is specified, set to 0, thus not empty. If the price is specified as any variation of "exp", "p.o.r.", "POR", "n.a.", "Prijs op aanvraag", "2e Prijslijst", or "POA", set to 0.
 - remarks: Free text of anything unmatched.
 
