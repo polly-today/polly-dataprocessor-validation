@@ -46,6 +46,10 @@ async def main():
     print(f"Batch ID: {batch_id}")
     run_ids = {}
 
+     # Load response schema for the LLM output
+    with open(response_schema_path, 'r') as file:
+        response_schema = json.load(file)
+
     # Insert all the runs in the database with a unique run ID and the system prompt, 
     # starting with a status of "pending"
     for input_id in input_ids_to_validate:
@@ -74,8 +78,10 @@ async def main():
             continue
         else:
             # Get the user prompt based on the value type
-            if value_type == "img" or value_type == "pdf" or value_type == "txt":
+            if value_type == "img" or value_type == "txt":
                 user_prompt = value
+            elif value_type == "pdf":
+                user_prompt = value 
             elif value_type == "xlsx":
                 # TODO: Handle Excel files
                 print(f"Input ID {input_id} is an Excel file. Skipping.")
@@ -86,9 +92,7 @@ async def main():
                 update_run(batch_id, input_id, status="failed", llm_output=None, error_message=f"Unsupported value type: {value_type}.", system_prompt=system_prompt)
                 continue
 
-        # Load response schema for the LLM output
-        with open(response_schema_path, 'r') as file:
-            response_schema = json.load(file)
+
 
         # Now call the LLM
         print(f"Calling LLM for input ID {input_id} with value type {value_type}...")
