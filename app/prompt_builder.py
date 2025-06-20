@@ -440,7 +440,7 @@ Extraction Instructions:
         aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['size'])
         prompt += f" (also known as {aliases_str})"
     prompt += """
-    - pieces"""
+    - piece"""
     if 'piece' in attribute_aliases and attribute_aliases['piece']:
         aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['piece'])
         prompt += f" (also known as {aliases_str})"
@@ -561,7 +561,7 @@ Global Definition Block (applies to every product type):
 
     prompt += """
 - qty_per_pallet: A positive integer representing the number of items per pallet. If missing, leave it empty.
-- net_weight: A numeric value in kilograms (kg). If the value is given in grams (e.g., 500g), convert it to kilograms (e.g., 0.5). If weight appears as part of the product line (e.g., "Plum tomatoes 6kg", "Onions 6 KG"), extract "6" as net_weight. If no weight is specified, leave net_weight empty. You may infer net_weight from pieces when both components are clearly present: a piece count and a weight per piece (e.g., if pieces = "10x1kg", then net_weight = 10). However, do not infer a piece-based quantity (e.g., "10x1kg") from standalone weight expressions like "10kg" — treat such cases as direct net_weight values.
+- net_weight: A numeric value in kilograms (kg). If the value is given in grams (e.g., 500g), convert it to kilograms (e.g., 0.5). If weight appears as part of the product line (e.g., "Plum tomatoes 6kg", "Onions 6 KG"), extract "6" as net_weight. If no weight is specified, leave net_weight empty. You may infer net_weight from piecec when both components are clearly present: a piece count and a weight per piece (e.g., if piece = "10x1kg", then net_weight = 10). However, do not infer a piece-based quantity (e.g., "10x1kg") from standalone weight expressions like "10kg" — treat such cases as direct net_weight values.
 - price: Numeric. If no price is specified, set to 0, thus not empty. If the price is specified as any variation of "exp", "p.o.r.", "POR", "n.a.", "Prijs op aanvraag", "2e Prijslijst", or "POA", set to 0.
 - remarks: Free text of anything unmatched.
 
@@ -594,7 +594,7 @@ The following sections define allowed values per product_type. Only extract valu
         if size_aliases.get(product_type):
             prompt += f"\tAliases: {size_aliases[product_type]}\n"
 
-        prompt += f"\n- pieces\n\tOptions: {pieces[product_type]}\n"
+        prompt += f"\n- piece\n\tOptions: {pieces[product_type]}\n"
         if piece_aliases.get(product_type):
             prompt += f"\tAliases: {piece_aliases[product_type]}\n"
 
@@ -677,6 +677,8 @@ def build_prompt(input, batch_id):
         product_type_rules=product_type_rules_dict,
         attribute_aliases=attribute_aliases
     )
+
+    print(prompt)
     
     return prompt
 
