@@ -139,7 +139,6 @@ def retrieve_product_types(relevant_product_types=None, batch_id=None, input_id=
         trans = conn.begin()
         try:
             for product_type in toBeAddedProductTypes:
-                print("Inserting…", batch_id, input_id, product_type)
                 conn.execute(
                     text(
                         "INSERT INTO to_be_added_product_types (batch_id, input_id, product_type) "
@@ -266,6 +265,45 @@ def retrieve_unit_trade_types(supplier_id=None):
     unit_trade_types.sort()
     return unit_trade_types, aliases
 
+def retrieve_attribute_aliases(supplier_id=None):
+    """
+    Retrieve all attribute aliases for a given supplier_id.
+    Returns a dictionary where keys are attribute names and values are lists of aliases.
+    """
+
+    with engine_stg.connect() as conn:
+        query = text("""
+            SELECT paat."name", pana.alias
+            FROM public.product_attributes_name_aliases pana
+            LEFT JOIN product_attributes_alias_types paat on paat.id = alias_type_id
+            WHERE supplier_id = :supplier_id OR supplier_id IS NULL;
+        """)
+        result = conn.execute(query, {"supplier_id": supplier_id})
+    attribute_aliases = {}
+    for row in result.fetchall():
+        attribute_name, alias = row[0], row[1]
+        if attribute_name not in attribute_aliases:
+            attribute_aliases[attribute_name] = []
+        attribute_aliases[attribute_name].append(alias)
+
+    attribute_name_to_response_format_name = {
+    "brand": "brand",
+    "class": "product_class",
+    "origin": "country",
+    "type": "product_type",
+    "quantity_per_pallet": "qty_per_pallet"}
+    
+    # Replace the keys in attribute_aliases with the corresponding response format names
+    for key in list(attribute_aliases.keys()):
+        if key in attribute_name_to_response_format_name:
+            new_key = attribute_name_to_response_format_name[key]
+            attribute_aliases[new_key] = attribute_aliases.pop(key)
+        else:
+            # If the key is not in the mapping, keep it as is
+            attribute_aliases[key] = attribute_aliases.pop(key)
+
+    return attribute_aliases
+
 
 def retrieve_product_info(product_type_id, product_type_name, supplier_id=None):
 
@@ -377,7 +415,8 @@ def write_prompt(
     unit_trade_types, unit_trade_type_aliases,
     countries, country_aliases,
     supplier_rules,
-    product_type_rules):
+    product_type_rules,
+    attribute_aliases):
     """
     Generates a dynamic prompt for extracting structured data from text based on the provided parameters.
     """
@@ -395,20 +434,70 @@ Extraction Instructions:
 4. Within that type-specific context, extract the following characteristics:
     - variety
     - sub_variety
-    - size (also known as "maat")
-    - pieces
-    - brand (also known as "merk")
+    - size"""
+    # check if key exists in attribute_aliases
+    if 'size' in attribute_aliases and attribute_aliases['size']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['size'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - pieces"""
+    if 'piece' in attribute_aliases and attribute_aliases['piece']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['piece'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - brand"""
+    if 'brand' in attribute_aliases and attribute_aliases['brand']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['brand'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
 5. Extract the following characteristics that are common across all types:
-    - package_type (also known as "verpakking")
-    - pallet
-    - class (also known as "klasse")
-    - unit_type
-    - unit_trade_type
-    - country (also known as "herkomst", "land" or "LvO")
-    - quantity_per_pallet (also known as "pp" or "cpp")
-    - net_weight (also known as "gewicht")
-    - price (also known as "euro")
+    - package_type"""
+    if 'package_type' in attribute_aliases and attribute_aliases['package_type']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['package_type'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - pallet"""
+    if 'pallet' in attribute_aliases and attribute_aliases['pallet']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['pallet'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - product_class"""
+    if 'product_class' in attribute_aliases and attribute_aliases['product_class']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['product_class'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - unit_type"""
+    if 'unit_type' in attribute_aliases and attribute_aliases['unit_type']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['unit_type'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - unit_trade_type"""
+    if 'unit_trade_type' in attribute_aliases and attribute_aliases['unit_trade_type']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['unit_trade_type'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - country"""
+    if 'country' in attribute_aliases and attribute_aliases['country']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['country'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - qty_per_pallet"""
+    if 'qty_per_pallet' in attribute_aliases and attribute_aliases['qty_per_pallet']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['qty_per_pallet'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - net_weight"""
+    if 'net_weight' in attribute_aliases and attribute_aliases['net_weight']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['net_weight'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
+    - price"""
+    if 'price' in attribute_aliases and attribute_aliases['price']:
+        aliases_str = ', '.join(f'"{alias}"' for alias in attribute_aliases['price'])
+        prompt += f" (also known as {aliases_str})"
+    prompt += """
     - remarks
+
 6. Translate non-English values to English where possible.
 7. Extract all offers, even if there is no price.
 8. If the country value contains multiple codes (e.g. CR/BR, NL/BE/FR), split that single raw offer into separate offers — one per country code — and carry all other fields unchanged.
@@ -443,7 +532,7 @@ Global Definition Block (applies to every product type):
         prompt += f"    Aliases: {pallet_aliases}\n"
 
     prompt += f"""
-- class
+- product_class
     Options: {product_classes}
 """
     if product_class_aliases:
@@ -471,7 +560,7 @@ Global Definition Block (applies to every product type):
         prompt += f"    Aliases: {country_aliases}\n"
 
     prompt += """
-- quantity_per_pallet: A positive integer representing the number of items per pallet. If missing, leave it empty.
+- qty_per_pallet: A positive integer representing the number of items per pallet. If missing, leave it empty.
 - net_weight: A numeric value in kilograms (kg). If the value is given in grams (e.g., 500g), convert it to kilograms (e.g., 0.5). If weight appears as part of the product line (e.g., "Plum tomatoes 6kg", "Onions 6 KG"), extract "6" as net_weight. If no weight is specified, leave net_weight empty. You may infer net_weight from pieces when both components are clearly present: a piece count and a weight per piece (e.g., if pieces = "10x1kg", then net_weight = 10). However, do not infer a piece-based quantity (e.g., "10x1kg") from standalone weight expressions like "10kg" — treat such cases as direct net_weight values.
 - price: Numeric. If no price is specified, set to 0, thus not empty. If the price is specified as any variation of "exp", "p.o.r.", "POR", "n.a.", "Prijs op aanvraag", "2e Prijslijst", or "POA", set to 0.
 - remarks: Free text of anything unmatched.
@@ -534,6 +623,7 @@ def build_prompt(input, batch_id):
     unit_types, unit_type_aliases = retrieve_unit_types()
     unit_trade_types, unit_trade_type_aliases = retrieve_unit_trade_types()
     product_type_ids = retrieve_product_types(relevant_product_types=relevant_product_types, batch_id=batch_id, input_id=input["id"].values[0].item())
+    attribute_aliases = retrieve_attribute_aliases(supplier_id)
 
     # initialize dicts
     product_type_aliases_dict = {}
@@ -584,7 +674,8 @@ def build_prompt(input, batch_id):
         unit_trade_types=unit_trade_types, unit_trade_type_aliases=unit_trade_type_aliases,
         countries=countries, country_aliases=country_aliases,
         supplier_rules=supplier_rules,
-        product_type_rules=product_type_rules_dict
+        product_type_rules=product_type_rules_dict,
+        attribute_aliases=attribute_aliases
     )
     
     return prompt
