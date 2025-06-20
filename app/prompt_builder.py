@@ -135,9 +135,24 @@ def retrieve_product_types(relevant_product_types=None, batch_id=None, input_id=
     
     # If there are product types that need to be added, create or empty unfound_product_types table with the batch_id, input_id, and product_type names
     if toBeAddedProductTypes:
-        with engine_val.connect() as conn:
+        conn = engine_val.connect()
+        trans = conn.begin()
+        try:
             for product_type in toBeAddedProductTypes:
-                conn.execute(text("INSERT INTO to_be_added_product_types (batch_id, input_id, product_type) VALUES (:batch_id, :input_id, :product_type);"), {"batch_id": batch_id, "input_id": input_id, "product_type": product_type})
+                print("Inserting…", batch_id, input_id, product_type)
+                conn.execute(
+                    text(
+                        "INSERT INTO to_be_added_product_types (batch_id, input_id, product_type) "
+                        "VALUES (:batch_id, :input_id, :product_type)"
+                    ),
+                    {"batch_id": batch_id, "input_id": input_id, "product_type": product_type}
+                )
+            trans.commit()
+        except:
+            trans.rollback()
+            raise
+        finally:
+            conn.close()
 
     return product_types
 
