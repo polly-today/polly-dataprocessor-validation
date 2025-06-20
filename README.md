@@ -1,10 +1,6 @@
 # TODOs
 
-- add masterdata into local db
-- add prompt builder service code to generate the prompt locally and send request to ai-svc to mimic data processor worker
 - explanation of data base setup below
-- process excel files within validation environment
-
 
 # How to use locally
 
@@ -66,6 +62,8 @@ python main.py -p default
 python main.py -p default -i 1 3
 # Process all inputs with a custom (manual) prompt from prompt.txt
 python main.py -p manual -s 'Added product type rule for Aubergine: Aubergine is by default purple.'
+# Process all inputs with a dynamic prompt containing only info about the relevant product types
+python main.py -p dynamic
 # Process inputs 5, 8, 10 with a custom prompt
 python main.py --prompt manual --inputs 5 8 10 -s 'Added product type rule for Aubergine: Aubergine is by default purple.'
 ```
@@ -100,7 +98,7 @@ The script loops over each input_id again. For each:
 **Comparison & saving results**
 
 Once the LLM returns a structured response, the script calls compare_llm_to_target_output(...).
-The comparison metrics (attribute, target_value, llm_value, similarity_score) is written into the database (public.results)
+The comparison metrics (attribute, target_value, llm_value, similarity_score) is written into the database (public.results). Besides, when you have applied the dynamic prompt, product types that did occur in the labeled dataset, but not in the masterdata, are stored into the database (public.to_be_added_product_types), so that we can easily detect which product types we might want to add.
 
 ## Interpreting results
 
